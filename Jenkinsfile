@@ -15,4 +15,17 @@ pipeline {
         API_PRODUCT_ID = 'your_api_product_id'
         API_PRODUCT_VERSION_ID = 'your_api_product_version_id'
     }
+    environment {
+        GIT_CREDENTIALS_ID = 'github-pat' // Use the ID you set in Jenkins for the PAT
+    }
+    stages {
+        stage('Checkout') {
+            steps {
+                script {
+                    git url: 'https://github.com/krishana2507/Jenkins-pipeline.git',
+                        credentialsId: env.GIT_CREDENTIALS_ID,
+                        branch: 'main'
+                }
+            }
+        }
     
