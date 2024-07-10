@@ -14,8 +14,6 @@ pipeline {
         GATEWAY_SERVICE_NAME = 'your_gateway_service_name'
         API_PRODUCT_ID = 'your_api_product_id'
         API_PRODUCT_VERSION_ID = 'your_api_product_version_id'
-    }
-    environment {
         GIT_CREDENTIALS_ID = 'github-pat' // Use the ID you set in Jenkins for the PAT
     }
     stages {
@@ -28,4 +26,5 @@ pipeline {
                 }
             }
         }
-    
+    }
+}
