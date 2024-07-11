@@ -1,11 +1,10 @@
 pipeline {
     agent any
     parameters {
-        string(name: 'API_REPO_NAME', description: 'API Repository name')
-        string(name: 'API_REPO_BRANCH', description: 'Choose the branch name for API Repository')
-        string(name: 'GLOBAL_CONFIG_REPO_NAME', description: 'Global Config Repository name')
-        string(name: 'GLOBAL_CONFIG_BRANCH', description: 'Choose the branch name for Global Config Repository')
-        choice(name: 'ENVIRONMENT', choices: ['dev', 'prod', 'test'], description: 'The environment to deploy to')
+        string(name: 'Source_Code_GIT_URL', description: 'Enter GIT URL of application source code.\ne.g. - https://alm-github.systems.uk.hsbc/myorg/myapplication.git')
+        string(name: 'Source_Code_GIT_Branch', description: 'Enter GIT branch of application source code.\ne.g. - master eg: scenario-')
+        string(name: 'Configuration_Yaml_Path', description: 'File path for configuration yaml\ne.g. - kong/dev-config.yaml, src/main/resources/pipeline-config.yaml etc.')
+        string(name: 'GSD_CR', description: 'Enter a valid GSD CR or IN that is approved by HAP.\nThis is mandatory for all deployment to Pre-Production and Production. CR3169492 IN0607525')
     }
     environment {
         ADMIN_API_URL = 'https://us.api.konghq.com/v2'
@@ -19,13 +18,13 @@ pipeline {
         stage('Validate Parameters') {
             steps {
                 script {
-                    echo "API_REPO_NAME: ${params.API_REPO_NAME}"
-                    echo "API_REPO_BRANCH: ${params.API_REPO_BRANCH}"
-                    echo "GLOBAL_CONFIG_REPO_NAME: ${params.GLOBAL_CONFIG_REPO_NAME}"
-                    echo "GLOBAL_CONFIG_BRANCH: ${params.GLOBAL_CONFIG_BRANCH}"
-                    echo "ENVIRONMENT: ${params.ENVIRONMENT}"
+                    echo "Source_Code_GIT_URL: ${params.Source_Code_GIT_URL}"
+                    echo "Source_Code_GIT_Branch: ${params.Source_Code_GIT_Branch}"
+                    echo "Configuration_Yaml_Path: ${params.Configuration_Yaml_Path}"
+                    echo "GSD_CR: ${params.GSD_CR}"
                 }
             }
         }
     }
 }
+
