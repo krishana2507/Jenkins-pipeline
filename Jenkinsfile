@@ -1,10 +1,12 @@
 pipeline {
     agent any
+    
     parameters {
-        string(name: 'Source_Code_GIT_URL', description: 'Enter GIT URL of application source code.\ne.g. - https://alm-github.systems.uk.hsbc/myorg/myapplication.git')
-        string(name: 'Source_Code_GIT_Branch', description: 'Enter GIT branch of application source code.\ne.g. - master eg: scenario-')
-        string(name: 'Configuration_Yaml_Path', description: 'File path for configuration yaml\ne.g. - config.yaml')
+        string(name: 'Source_Code_GIT_URL', description: 'Enter GIT URL of application source code.')
+        string(name: 'Source_Code_GIT_Branch', description: 'Enter GIT branch of application source code.')
+        string(name: 'Configuration_Yaml_Path', description: 'File path for configuration yaml.')
     }
+    
     stages {
         stage('Checkout') {
             steps {
@@ -16,34 +18,31 @@ pipeline {
                 }
             }
         }
-        stage('Read Config and Print OAS File') {
+        
+        stage('Read Config and Print YAML') {
             steps {
                 script {
-                    try {
-                        // Read the config.yaml file to get the path to the OAS file
-                        def config = readYaml file: params.Configuration_Yaml_Path
-                        echo "Config: ${config}"
+                    // Read the config.yaml file
+                    def config = readYaml(file: "${params.Configuration_Yaml_Path}")
 
-                        def oasFilePath = config.oas_file_path
-                        echo "OAS file path from config: ${oasFilePath}"
-
-                        // Ensure the OAS file exists
-                        if (fileExists(oasFilePath)) {
-                            // Read and print the contents of the OAS file
-                            def oasFileContent = readFile file: oasFilePath
-                            echo "Contents of OAS file (${oasFilePath}):\n${oasFileContent}"
-                        } else {
-                            error "OAS file (${oasFilePath}) does not exist."
-                        }
-                    } catch (Exception e) {
-                        echo "An error occurred: ${e.message}"
-                        throw e
+                    // Ensure oas_file_path exists in the config.yaml
+                    if (config.oas_file_path) {
+                        def oasFilePath = "${config.oas_file_path}"
+                        
+                        // Read and print the content of petstore.yaml
+                        def yamlContent = readFile(file: oasFilePath)
+                        echo "Contents of ${oasFilePath}:"
+                        echo yamlContent
+                    } else {
+                        error "oas_file_path not found in ${params.Configuration_Yaml_Path}"
                     }
                 }
             }
         }
     }
 }
+
+    
 
 
 
