@@ -3,31 +3,47 @@ pipeline {
     parameters {
         string(name: 'Source_Code_GIT_URL', description: 'Enter GIT URL of application source code.\ne.g. - https://alm-github.systems.uk.hsbc/myorg/myapplication.git')
         string(name: 'Source_Code_GIT_Branch', description: 'Enter GIT branch of application source code.\ne.g. - master eg: scenario-')
-        string(name: 'Configuration_Yaml_Path', description: 'File path for configuration yaml\ne.g. - kong/config.yaml')
+        string(name: 'Configuration_Yaml_Path', description: 'File path for configuration yaml\ne.g. - config.yaml')
     }
     stages {
         stage('Checkout') {
             steps {
                 script {
-                    // Checkout the repository
+                    // Checkout the repository using the provided GIT URL and branch
                     git url: params.Source_Code_GIT_URL, branch: params.Source_Code_GIT_Branch
+                    // List files in the workspace to ensure checkout
+                    sh 'ls -la'
                 }
             }
         }
         stage('Read Config and Print OAS File') {
             steps {
                 script {
-                    // Read the config.yaml file to get the path to the OAS file
-                    def config = readYaml file: params.Configuration_Yaml_Path
-                    def oasFilePath = config.oas_file_path
-                    
-                    // Read and print the contents of the OAS file
-                    def oasFileContent = readFile file: oasFilePath
-                    echo "Contents of OAS file (${oasFilePath}):\n${oasFileContent}"
+                    try {
+                        // Read the config.yaml file to get the path to the OAS file
+                        def config = readYaml file: params.Configuration_Yaml_Path
+                        echo "Config: ${config}"
+
+                        def oasFilePath = config.oas_file_path
+                        echo "OAS file path from config: ${oasFilePath}"
+
+                        // Ensure the OAS file exists
+                        if (fileExists(oasFilePath)) {
+                            // Read and print the contents of the OAS file
+                            def oasFileContent = readFile file: oasFilePath
+                            echo "Contents of OAS file (${oasFilePath}):\n${oasFileContent}"
+                        } else {
+                            error "OAS file (${oasFilePath}) does not exist."
+                        }
+                    } catch (Exception e) {
+                        echo "An error occurred: ${e.message}"
+                        throw e
+                    }
                 }
             }
         }
     }
+}
 }
 
 
