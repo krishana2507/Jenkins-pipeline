@@ -12,6 +12,7 @@ pipeline {
         GATEWAY_SERVICE_NAME = 'your_gateway_service_name'
         API_PRODUCT_ID = 'your_api_product_id'
         API_PRODUCT_VERSION_ID = 'your_api_product_version_id'
+        DECK_TOKEN = 'your_deck_token'
     }
     stages {
         stage('Checkout Repository') {
@@ -44,6 +45,40 @@ pipeline {
                         // Read and print the content of the generated kong.yaml file
                         def kongConfigContent = readFile 'kong.yaml'
                         echo "Generated Kong config (kong.yaml) Content:\n${kongConfigContent}"
+                        
+                        // Push kong.yaml to Kong Konnect UI using Deck
+                        stage('Check') {
+                            steps {
+                                sh 'deck sync -s kong.yaml --konnect-token spat_OLr5aVIy7sWA3bPkl9PPmYjMH0bsuK2Jr5D1NuokI31JNKXfB --konnect-control-plane-name konnect-values'
+                                echo "Sync completed"
+                            }
+                        }
+                        
+                        // Stage to commit files
+                        stage('Commit files') {
+                            steps {
+                                sh '''
+                                  git config --local user.email "krishna.sharma@neosalpha.com"
+                                  git config --local user.name "krishna2507"
+                                  git add *.yaml
+                                  if [ -z "$(git status --porcelain)" ]; then
+                                    echo "::set-output name=push::false"
+                                  else
+                                    git commit -m "Add changes sd" -a
+                                    echo "::set-output name=push::true"
+                                  fi
+                                '''
+                                script {
+                                  if (env.BRANCH_NAME == 'main') {
+                                    // Push changes only for the main branch
+                                    gitPushChanges()
+                                  } else {
+                                    echo 'Skipping push changes as branch is not main.'
+                                  }
+                                }
+                            }
+                        }
+                        
                     } else {
                         error "oas_file_path not found in ${params.Configuration_Yaml_Path}"
                     }
