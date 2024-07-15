@@ -22,6 +22,10 @@ pipeline {
         stage('Read Config and Print YAML') {
             steps {
                 script {
+                    // Verify that the config file exists
+                    echo "Checking if config file exists at: ${params.Configuration_Yaml_Path}"
+                    sh "cat ${params.Configuration_Yaml_Path}"  // Print the config file content
+
                     // Read the config.yaml file
                     def config = readYaml(file: "${params.Configuration_Yaml_Path}")
 
@@ -29,8 +33,12 @@ pipeline {
                     if (config.oas_file_path) {
                         def oasFilePath = "${config.oas_file_path}"
                         
+                        // Verify that the OAS file exists
+                        echo "Checking if OAS file exists at: ${oasFilePath}"
+                        sh "cat ${oasFilePath}"  // Print the OAS file content
+
                         // Read and print the content of petstore.yaml
-                        def yamlContent = readFile(file: oasFilePath)
+                        def yamlContent = readFile(file: oasFilePath.trim())
                         echo "Contents of ${oasFilePath}:"
                         echo yamlContent
                     } else {
@@ -41,7 +49,6 @@ pipeline {
         }
     }
 }
-
     
 
 
