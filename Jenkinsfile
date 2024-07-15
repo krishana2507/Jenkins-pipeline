@@ -4,9 +4,9 @@ pipeline {
         string(name: 'Source_Code_GIT_URL', description: 'Enter GIT URL')
         string(name: 'Source_Code_GIT_Branch', description: 'Enter GIT branch')
         string(name: 'Configuration_Yaml_Path', description: 'File path for configuration')
+        string(name: 'Konnect_Token', description: 'Kong Konnect token' )
     }
     environment {
-        DECK_TOKEN = credentials('konnect-token') // Assuming this is your Kong Konnect token credential ID
         GIT_USER_EMAIL = 'krishna.sharma@neosalpha.com'
         GIT_USER_NAME = 'krishna2507'
     }
@@ -46,8 +46,9 @@ pipeline {
                         stage('Push Kong YAML to Kong Konnect') {
                             steps {
                                 script {
+                                    def konnectToken = params.Konnect_Token
                                     def konnectControlPlaneName = 'konnect-values'
-                                    def deckCmd = "deck sync kong.yaml --konnect-token ${DECK_TOKEN} --konnect-control-plane-name ${konnectControlPlaneName}"
+                                    def deckCmd = "deck sync kong.yaml --konnect-token ${konnectToken} --konnect-control-plane-name ${konnectControlPlaneName}"
                                     
                                     def result = sh(script: deckCmd, returnStatus: true)
                                     
