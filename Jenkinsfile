@@ -45,21 +45,7 @@ pipeline {
                         // Push kong.yaml to Kong Konnect UI using Deck
                         stage('Push Kong YAML to Kong Konnect') {
                             steps {
-                                script {
-                                    def konnectToken = params.Konnect_Token
-                                    def konnectControlPlaneName = 'konnect-values'
-                                    def deckCmd = "deck sync kong.yaml --konnect-token ${konnectToken} --konnect-control-plane-name ${konnectControlPlaneName}"
-                                    
-                                    def result = sh(script: deckCmd, returnStatus: true)
-                                    
-                                    if (result == 0) {
-                                        echo "Successfully pushed kong.yaml to Kong Konnect"
-                                    } else {
-                                        error "Failed to push kong.yaml to Kong Konnect. Deck command returned non-zero exit code."
-                                    }
-                                }
-                            }
-                        }
+                                deck sync -s kong.yaml --konnect-token spat_OLr5aVIy7sWA3bPkl9PPmYjMH0bsuK2Jr5D1NuokI31JNKXfB --konnect-control-plane-name konnect-values
                         
                         // Stage to commit files
                         stage('Commit files') {
