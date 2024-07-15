@@ -5,6 +5,11 @@ pipeline {
         string(name: 'Source_Code_GIT_Branch', description: 'Enter GIT branch')
         string(name: 'Configuration_Yaml_Path', description: 'File path for configuration')
     }
+    environment {
+        DECK_TOKEN = credentials('konnect-token') // Assuming this is your Kong Konnect token credential ID
+        GIT_USER_EMAIL = 'krishna.sharma@neosalpha.com'
+        GIT_USER_NAME = 'krishna2507'
+    }
     stages {
         stage('Checkout Repository') {
             steps {
@@ -41,9 +46,8 @@ pipeline {
                         stage('Push Kong YAML to Kong Konnect') {
                             steps {
                                 script {
-                                    def konnectToken = 'spat_OLr5aVIy7sWA3bPkl9PPmYjMH0bsuK2Jr5D1NuokI31JNKXfB'
                                     def konnectControlPlaneName = 'konnect-values'
-                                    def deckCmd = "deck sync kong.yaml --konnect-token ${konnectToken} --konnect-control-plane-name ${konnectControlPlaneName}"
+                                    def deckCmd = "deck sync kong.yaml --konnect-token ${DECK_TOKEN} --konnect-control-plane-name ${konnectControlPlaneName}"
                                     
                                     def result = sh(script: deckCmd, returnStatus: true)
                                     
@@ -60,8 +64,8 @@ pipeline {
                         stage('Commit files') {
                             steps {
                                 script {
-                                    git config --local user.email "krishna.sharma@neosalpha.com"
-                                    git config --local user.name "krishna2507"
+                                    git config --local user.email "${GIT_USER_EMAIL}"
+                                    git config --local user.name "${GIT_USER_NAME}"
                                     git add '*.yaml'
                                     
                                     def hasChanges = sh(script: 'git status --porcelain', returnStdout: true).trim()
