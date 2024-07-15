@@ -6,8 +6,7 @@ pipeline {
         string(name: 'Configuration_Yaml_Path', description: 'File path for configuration')
     }
     environment {
-        ADMIN_API_TOKEN = credentials('admin-api-token')
-        // Add other environment variables as needed
+        ADMIN_API_TOKEN = credentials('admin-api-token') // Assuming you have a credential ID for admin API token
     }
     stages {
         stage('Checkout Repository') {
@@ -45,7 +44,9 @@ pipeline {
                         stage('Push Kong YAML to Kong Konnect') {
                             steps {
                                 script {
-                                    def deckCmd = "deck sync kong.yaml --konnect-token $spat_OLr5aVIy7sWA3bPkl9PPmYjMH0bsuK2Jr5D1NuokI31JNKXfB "
+                                    def konnectToken = credentials('konnect-token') // Replace with your credential ID
+                                    def konnectControlPlaneName = 'konnect-values'
+                                    def deckCmd = "deck sync kong.yaml --konnect-token ${konnectToken} --konnect-control-plane-name ${konnectControlPlaneName}"
                                     
                                     def result = sh(script: deckCmd, returnStatus: true)
                                     
