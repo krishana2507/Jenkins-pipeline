@@ -11,7 +11,7 @@ pipeline {
         CONTROL_PLANE_NAME = 'your_control_plane_name'
         GATEWAY_SERVICE_NAME = 'your_gateway_service_name'
         API_PRODUCT_ID = 'your_api_product_id'
-        API_PRODUCT_VERSION_ID = 'your_api_product_version_id'
+        API_PRODUCT_VERSION_ID = 'your_api_product_version_id' 
     }
     stages {
         stage('Checkout Repository') {
