@@ -5,9 +5,6 @@ pipeline {
         string(name: 'Source_Code_GIT_Branch', description: 'Enter GIT branch')
         string(name: 'Configuration_Yaml_Path', description: 'File path for configuration')
     }
-    environment {
-        ADMIN_API_TOKEN = credentials('admin-api-token') // Assuming you have a credential ID for admin API token
-    }
     stages {
         stage('Checkout Repository') {
             steps {
