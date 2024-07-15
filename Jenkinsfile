@@ -1,5 +1,5 @@
 pipeline {
-    agent any 
+    agent any
     
     parameters {
         string(name: 'Source_Code_GIT_URL', description: 'Enter GIT URL of application source code.')
@@ -22,23 +22,23 @@ pipeline {
         stage('Read Config and Print YAML') {
             steps {
                 script {
-                    // Verify that the config file exists
-                    echo "Checking if config file exists at: ${params.Configuration_Yaml_Path}"
-                    sh "cat ${params.Configuration_Yaml_Path}"  // Print the config file content
-
+                    // Print the path of the config file
+                    echo "Reading config file from: ${params.Configuration_Yaml_Path}"
+                    
                     // Read the config.yaml file
                     def config = readYaml(file: "${params.Configuration_Yaml_Path}")
-
+                    echo "Config content: ${config}"
+                    
                     // Ensure oas_file_path exists in the config.yaml
                     if (config.oas_file_path) {
-                        def oasFilePath = "${config.oas_file_path}"
+                        def oasFilePath = config.oas_file_path.trim()
+                        echo "oas_file_path found: ${oasFilePath}"
                         
-                        // Verify that the OAS file exists
-                        echo "Checking if OAS file exists at: ${oasFilePath}"
-                        sh "cat ${oasFilePath}"  // Print the OAS file content
-
-                        // Read and print the content of petstore.yaml
-                        def yamlContent = readFile(file: oasFilePath.trim())
+                        // Verify that the OAS file exists and print its content
+                        sh "ls -la ${oasFilePath}"  // List the file to verify existence
+                        
+                        // Read and print the content of the OAS file
+                        def yamlContent = readFile(file: oasFilePath)
                         echo "Contents of ${oasFilePath}:"
                         echo yamlContent
                     } else {
