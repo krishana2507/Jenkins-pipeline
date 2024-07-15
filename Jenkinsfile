@@ -5,9 +5,6 @@ pipeline {
         string(name: 'Source_Code_GIT_Branch', description: 'Enter GIT branch')
         string(name: 'Configuration_Yaml_Path', description: 'File path for configuration')
     }
-    environment {
-        // Define your environment variables if needed
-    }
     stages {
         stage('Checkout Repository') {
             steps {
