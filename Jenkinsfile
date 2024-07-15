@@ -1,93 +1,37 @@
 pipeline {
     agent any
-    
     parameters {
-        string(name: 'Source_Code_GIT_URL', description: 'Enter GIT URL of application source code.')
-        string(name: 'Source_Code_GIT_Branch', description: 'Enter GIT branch of application source code.')
-        string(name: 'Configuration_Yaml_Path', description: 'File path for configuration yaml.')
+        string(name: 'Source_Code_GIT_URL', description: 'Enter GIT URL')
+        string(name: 'Source_Code_GIT_Branch', description: 'Enter GIT branch')
+        string(name: 'Configuration_Yaml_Path', description: 'File path for configuration')
     }
-    
+    environment {
+        ADMIN_API_URL = 'https://us.api.konghq.com/v2'
+        ADMIN_API_TOKEN = 'your_admin_api_token'
+        CONTROL_PLANE_NAME = 'your_control_plane_name'
+        GATEWAY_SERVICE_NAME = 'your_gateway_service_name'
+        API_PRODUCT_ID = 'your_api_product_id'
+        API_PRODUCT_VERSION_ID = 'your_api_product_version_id'
+    }
     stages {
-        stage('Checkout') {
+        stage('Checkout Repository') {
             steps {
                 script {
-                    // Checkout the repository using the provided GIT URL and branch
                     git url: params.Source_Code_GIT_URL, branch: params.Source_Code_GIT_Branch
-                    // List files in the workspace to ensure checkout
-                    sh 'ls -la'
                 }
             }
         }
-        
-        stage('Read Config and Print YAML') {
+        stage('Read and Print YAML') {
             steps {
                 script {
-                    // Print the path of the config file
-                    echo "Reading config file from: ${params.Configuration_Yaml_Path}"
-                    
-                    // Read the config.yaml file
-                    def config = readYaml(file: "${params.Configuration_Yaml_Path}")
-                    echo "Config content: ${config}"
-                    
-                    // Ensure oas_file_path exists in the config.yaml
-                    if (config.oas_file_path) {
-                        def oasFilePath = config.oas_file_path.trim()
-                        echo "oas_file_path found: ${oasFilePath}"
-                        
-                        // Verify that the OAS file exists and print its content
-                        sh "ls -la ${oasFilePath}"  // List the file to verify existence
-                        
-                        // Read and print the content of the OAS file
-                        def yamlContent = readFile(file: oasFilePath)
-                        echo "Contents of ${oasFilePath}:"
-                        echo yamlContent
-                    } else {
-                        error "oas_file_path not found in ${params.Configuration_Yaml_Path}"
-                    }
+                    def yamlFilePath = params.Configuration_Yaml_Path
+                    def yamlContent = readFile yamlFilePath
+                    echo "YAML Content:\n${yamlContent}"
                 }
             }
         }
     }
 }
-    
-
-
-
-
-// pipeline {
-//     agent any
-//     parameters {
-//         string(name: 'Source_Code_GIT_URL', description: 'Enter GIT URL')
-//         string(name: 'Source_Code_GIT_Branch', description: 'Enter GIT branch')
-//         string(name: 'Configuration_Yaml_Path', description: 'File path for configuration')
-//     }
-//     environment {
-//         ADMIN_API_URL = 'https://us.api.konghq.com/v2'
-//         ADMIN_API_TOKEN = 'your_admin_api_token'
-//         CONTROL_PLANE_NAME = 'your_control_plane_name'
-//         GATEWAY_SERVICE_NAME = 'your_gateway_service_name'
-//         API_PRODUCT_ID = 'your_api_product_id'
-//         API_PRODUCT_VERSION_ID = 'your_api_product_version_id'
-//     }
-//     stages {
-//         stage('Checkout Repository') {
-//             steps {
-//                 script {
-//                     git url: params.Source_Code_GIT_URL, branch: params.Source_Code_GIT_Branch
-//                 }
-//             }
-//         }
-//         stage('Read and Print YAML') {
-//             steps {
-//                 script {
-//                     def yamlFilePath = params.Configuration_Yaml_Path
-//                     def yamlContent = readFile yamlFilePath
-//                     echo "YAML Content:\n${yamlContent}"
-//                 }
-//             }
-//         }
-//     }
-// }
 
 
 
