@@ -45,9 +45,7 @@ pipeline {
                         stage('Push Kong YAML to Kong Konnect') {
                             steps {
                                 script {
-                                    def konnectToken = credentials('spat_OLr5aVIy7sWA3bPkl9PPmYjMH0bsuK2Jr5D1NuokI31JNKXfB')
-                                    def konnectControlPlaneName = 'konnect-values'
-                                    def deckCmd = "deck sync kong.yaml --konnect-token ${konnectToken} --konnect-control-plane-name ${konnectControlPlaneName}"
+                                    def deckCmd = "deck sync kong.yaml --konnect-token $spat_OLr5aVIy7sWA3bPkl9PPmYjMH0bsuK2Jr5D1NuokI31JNKXfB "
                                     
                                     def result = sh(script: deckCmd, returnStatus: true)
                                     
