@@ -6,13 +6,8 @@ pipeline {
         string(name: 'Configuration_Yaml_Path', description: 'File path for configuration')
     }
     environment {
-        ADMIN_API_URL = 'https://us.api.konghq.com/v2'
-        ADMIN_API_TOKEN = 'your_admin_api_token'
-        CONTROL_PLANE_NAME = 'your_control_plane_name'
-        GATEWAY_SERVICE_NAME = 'your_gateway_service_name'
-        API_PRODUCT_ID = 'your_api_product_id'
-        API_PRODUCT_VERSION_ID = 'your_api_product_version_id'
-        DECK_TOKEN = 'your_deck_token'
+        ADMIN_API_TOKEN = credentials('admin-api-token')
+        // Add other environment variables as needed
     }
     stages {
         stage('Checkout Repository') {
@@ -26,7 +21,7 @@ pipeline {
             steps {
                 script {
                     def configYamlPath = params.Configuration_Yaml_Path
-                    def configContent = readFile configYamlPath
+                    def configContent = readFile(configYamlPath).trim()
                     echo "Config YAML Content:\n${configContent}"
                     
                     def config = readYaml text: configContent
@@ -35,7 +30,7 @@ pipeline {
                         echo "oas_file_path found: ${oasFilePath}"
                         
                         // Read and print the content of the OAS file
-                        def oasContent = readFile oasFilePath
+                        def oasContent = readFile(oasFilePath).trim()
                         echo "Contents of ${oasFilePath}:"
                         echo oasContent
                         
@@ -43,38 +38,51 @@ pipeline {
                         sh "deck file openapi2kong -s ${oasFilePath} -o kong.yaml"
                         
                         // Read and print the content of the generated kong.yaml file
-                        def kongConfigContent = readFile 'kong.yaml'
+                        def kongConfigContent = readFile('kong.yaml').trim()
                         echo "Generated Kong config (kong.yaml) Content:\n${kongConfigContent}"
                         
                         // Push kong.yaml to Kong Konnect UI using Deck
-                        stage('Check') {
+                        stage('Push Kong YAML to Kong Konnect') {
                             steps {
-                                sh 'deck sync -s kong.yaml --konnect-token spat_OLr5aVIy7sWA3bPkl9PPmYjMH0bsuK2Jr5D1NuokI31JNKXfB --konnect-control-plane-name konnect-values'
-                                echo "Sync completed"
+                                script {
+                                    def konnectToken = credentials('spat_OLr5aVIy7sWA3bPkl9PPmYjMH0bsuK2Jr5D1NuokI31JNKXfB')
+                                    def konnectControlPlaneName = 'konnect-values'
+                                    def deckCmd = "deck sync kong.yaml --konnect-token ${konnectToken} --konnect-control-plane-name ${konnectControlPlaneName}"
+                                    
+                                    def result = sh(script: deckCmd, returnStatus: true)
+                                    
+                                    if (result == 0) {
+                                        echo "Successfully pushed kong.yaml to Kong Konnect"
+                                    } else {
+                                        error "Failed to push kong.yaml to Kong Konnect. Deck command returned non-zero exit code."
+                                    }
+                                }
                             }
                         }
                         
                         // Stage to commit files
                         stage('Commit files') {
                             steps {
-                                sh '''
-                                  git config --local user.email "krishna.sharma@neosalpha.com"
-                                  git config --local user.name "krishna2507"
-                                  git add *.yaml
-                                  if [ -z "$(git status --porcelain)" ]; then
-                                    echo "::set-output name=push::false"
-                                  else
-                                    git commit -m "Add changes sd" -a
-                                    echo "::set-output name=push::true"
-                                  fi
-                                '''
                                 script {
-                                  if (env.BRANCH_NAME == 'main') {
-                                    // Push changes only for the main branch
-                                    gitPushChanges()
-                                  } else {
-                                    echo 'Skipping push changes as branch is not main.'
-                                  }
+                                    git config --local user.email "krishna.sharma@neosalpha.com"
+                                    git config --local user.name "krishna2507"
+                                    git add '*.yaml'
+                                    
+                                    def hasChanges = sh(script: 'git status --porcelain', returnStdout: true).trim()
+                                    
+                                    if (hasChanges.empty) {
+                                        echo "::set-output name=push::false"
+                                    } else {
+                                        git commit -m "Add changes sd" -a
+                                        echo "::set-output name=push::true"
+                                        
+                                        if (env.BRANCH_NAME == 'main') {
+                                            // Push changes only for the main branch
+                                            gitPushChanges()
+                                        } else {
+                                            echo 'Skipping push changes as branch is not main.'
+                                        }
+                                    }
                                 }
                             }
                         }
