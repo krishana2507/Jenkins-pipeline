@@ -1,5 +1,5 @@
 pipeline {
-    agent any
+    agent any 
     
     parameters {
         string(name: 'Source_Code_GIT_URL', description: 'Enter GIT URL of application source code.')
