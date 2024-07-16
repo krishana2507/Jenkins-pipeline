@@ -41,6 +41,13 @@ pipeline {
                         // Read and print the content of the generated kong.yaml file
                         def kongConfigContent = readFile('kong.yaml').trim()
                         echo "Generated Kong config (kong.yaml) Content:\n${kongConfigContent}"
+                        
+                        // Append key-auth plugin configuration using yq
+                        sh "yq eval '.plugins += [{name: \"key-auth\", config: {}}]' -i kong.yaml"
+                        
+                        // Print updated kong.yaml content
+                        def updatedKongConfigContent = readFile('kong.yaml').trim()
+                        echo "Updated Kong config (kong.yaml) Content:\n${updatedKongConfigContent}"
                     } else {
                         error "oas_file_path not found in ${params.Configuration_Yaml_Path}"
                     }
