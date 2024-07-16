@@ -75,7 +75,7 @@ pipeline {
                 withCredentials([usernamePassword(credentialsId: 'github-credentials', usernameVariable: 'GIT_USERNAME', passwordVariable: 'GIT_PASSWORD')]) {
                     script {
                         try {
-                            sh 'git push https://${GIT_USERNAME}:${GIT_PASSWORD}@github.com/${params.Source_Code_GIT_URL}.git ${params.Source_Code_GIT_Branch}'
+                            sh "git push https://${GIT_USERNAME}:${GIT_PASSWORD}@${params.Source_Code_GIT_URL} ${params.Source_Code_GIT_Branch}"
                             echo "Committed and pushed kong.yaml to the repository."
                         } catch (Exception e) {
                             error "Failed to push kong.yaml: ${e.getMessage()}"
