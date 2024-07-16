@@ -52,7 +52,7 @@ pipeline {
                 script {
                     def konnectToken = params.Konnect_Token
                     def konnectControlPlaneName = 'konnect-values'
-                    def deckCmd = "deck sync kong.yaml --konnect-token ${konnectToken} --konnect-control-plane-name ${konnectControlPlaneName}"
+                    def deckCmd = "deck sync -s kong.yaml --konnect-token=${konnectToken} --konnect-control-plane-name=${konnectControlPlaneName}"
                     
                     def result = sh(script: deckCmd, returnStatus: true)
                     
