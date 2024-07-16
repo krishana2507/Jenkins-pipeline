@@ -42,26 +42,22 @@ pipeline {
                         def kongConfigContent = readFile('kong.yaml').trim()
                         echo "Generated Kong config (kong.yaml) Content:\n${kongConfigContent}"
                         
-                        // Append key-auth plugin configuration using yq
-                        sh "yq eval '.plugins += [{name: \"key-auth\", config: {}}]' -i kong.yaml"
-                        
-                        // Print updated kong.yaml content
-                        def updatedKongConfigContent = readFile('kong.yaml').trim()
-                        echo "Updated Kong config (kong.yaml) Content:\n${updatedKongConfigContent}"
+                        // Append plugin configurations from plugin_file_path
+                        if (config.plugin_file_path) {
+                            config.plugin_file_path.each { pluginFilePath ->
+                                pluginFilePath = pluginFilePath.trim()
+                                echo "Appending plugin configuration from: ${pluginFilePath}"
+                                sh "yq eval-all '.plugins += load(\"${pluginFilePath}\")' -i kong.yaml"
+                            }
+                            
+                            // Print updated kong.yaml content
+                            def updatedKongConfigContent = readFile('kong.yaml').trim()
+                            echo "Updated Kong config (kong.yaml) Content:\n${updatedKongConfigContent}"
+                        } else {
+                            error "plugin_file_path not found in ${params.Configuration_Yaml_Path}"
+                        }
                     } else {
                         error "oas_file_path not found in ${params.Configuration_Yaml_Path}"
-                    }
-                    
-                    if (config.plugin_file_path) {
-                        def pluginFilePath = config.plugin_file_path instanceof List ? config.plugin_file_path[0].trim() : config.plugin_file_path.trim()
-                        echo "plugin_file_path found: ${pluginFilePath}"
-                        
-                        // Read and print the content of the plugin YAML file
-                        def pluginContent = readFile(pluginFilePath).trim()
-                        echo "Contents of ${pluginFilePath}:"
-                        echo pluginContent
-                    } else {
-                        error "plugin_file_path not found in ${params.Configuration_Yaml_Path}"
                     }
                 }
             }
