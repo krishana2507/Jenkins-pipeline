@@ -4,7 +4,7 @@ pipeline {
         string(name: 'Source_Code_GIT_URL', description: 'Enter GIT URL')
         string(name: 'Source_Code_GIT_Branch', description: 'Enter GIT branch')
         string(name: 'Configuration_Yaml_Path', description: 'File path for configuration')
-        string(name: 'Konnect_Token', description: 'Kong Konnect token' )
+        string(name: 'Konnect_Token', description: 'Kong Konnect token')
     }
     environment {
         GIT_USER_EMAIL = 'krishna.sharma@neosalpha.com'
@@ -41,41 +41,44 @@ pipeline {
                         // Read and print the content of the generated kong.yaml file
                         def kongConfigContent = readFile('kong.yaml').trim()
                         echo "Generated Kong config (kong.yaml) Content:\n${kongConfigContent}"
-                        
-                        // Push kong.yaml to Kong Konnect UI using Deck
-                        stage('Push Kong YAML to Kong Konnect') {
-                            steps {
-                                deck sync -s kong.yaml --konnect-token spat_OLr5aVIy7sWA3bPkl9PPmYjMH0bsuK2Jr5D1NuokI31JNKXfB --konnect-control-plane-name konnect-values
-                        
-                        // Stage to commit files
-                        stage('Commit files') {
-                            steps {
-                                script {
-                                    git config --local user.email "${GIT_USER_EMAIL}"
-                                    git config --local user.name "${GIT_USER_NAME}"
-                                    git add '*.yaml'
-                                    
-                                    def hasChanges = sh(script: 'git status --porcelain', returnStdout: true).trim()
-                                    
-                                    if (hasChanges.empty) {
-                                        echo "::set-output name=push::false"
-                                    } else {
-                                        git commit -m "Add changes sd" -a
-                                        echo "::set-output name=push::true"
-                                        
-                                        if (env.BRANCH_NAME == 'main') {
-                                            // Push changes only for the main branch
-                                            gitPushChanges()
-                                        } else {
-                                            echo 'Skipping push changes as branch is not main.'
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                        
                     } else {
                         error "oas_file_path not found in ${params.Configuration_Yaml_Path}"
+                    }
+                }
+            }
+        }
+        stage('Commit kong.yaml') {
+            steps {
+                script {
+                    git config --local user.email "${GIT_USER_EMAIL}"
+                    git config --local user.name "${GIT_USER_NAME}"
+                    git add 'kong.yaml'
+                    
+                    def hasChanges = sh(script: 'git status --porcelain', returnStdout: true).trim()
+                    
+                    if (!hasChanges.isEmpty()) {
+                        git commit -m "Add generated kong.yaml"
+                        git push origin "${params.Source_Code_GIT_Branch}"
+                        echo "Committed and pushed kong.yaml to the repository."
+                    } else {
+                        echo "No changes to commit."
+                    }
+                }
+            }
+        }
+        stage('Push Kong YAML to Kong Konnect') {
+            steps {
+                script {
+                    def konnectToken = params.Konnect_Token
+                    def konnectControlPlaneName = 'konnect-values'
+                    def deckCmd = "deck sync kong.yaml --konnect-token ${konnectToken} --konnect-control-plane-name ${konnectControlPlaneName}"
+                    
+                    def result = sh(script: deckCmd, returnStatus: true)
+                    
+                    if (result == 0) {
+                        echo "Successfully pushed kong.yaml to Kong Konnect"
+                    } else {
+                        error "Failed to push kong.yaml to Kong Konnect. Deck command returned non-zero exit code."
                     }
                 }
             }
