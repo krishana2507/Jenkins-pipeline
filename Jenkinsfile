@@ -61,13 +61,25 @@ pipeline {
                         
                         if (!hasChanges.isEmpty()) {
                             sh 'git commit -m "Add generated kong.yaml"'
-                            sh "git push origin ${params.Source_Code_GIT_Branch}"
-                            echo "Committed and pushed kong.yaml to the repository."
                         } else {
                             echo "No changes to commit."
                         }
                     } catch (Exception e) {
-                        error "Failed to commit and push kong.yaml: ${e.getMessage()}"
+                        error "Failed to commit kong.yaml: ${e.getMessage()}"
+                    }
+                }
+            }
+        }
+        stage('Push kong.yaml to Repository') {
+            steps {
+                withCredentials([usernamePassword(credentialsId: 'github-credentials', usernameVariable: 'GIT_USERNAME', passwordVariable: 'GIT_PASSWORD')]) {
+                    script {
+                        try {
+                            sh 'git push https://${GIT_USERNAME}:${GIT_PASSWORD}@github.com/${params.Source_Code_GIT_URL}.git ${params.Source_Code_GIT_Branch}'
+                            echo "Committed and pushed kong.yaml to the repository."
+                        } catch (Exception e) {
+                            error "Failed to push kong.yaml: ${e.getMessage()}"
+                        }
                     }
                 }
             }
