@@ -57,8 +57,8 @@ pipeline {
                     def hasChanges = sh(script: 'git status --porcelain', returnStdout: true).trim()
                     
                     if (!hasChanges.isEmpty()) {
-                        git commit -m "Add generated kong.yaml"
-                        git push origin "${params.Source_Code_GIT_Branch}"
+                        sh 'git commit -m "Add generated kong.yaml"'
+                        sh "git push origin ${params.Source_Code_GIT_Branch}"
                         echo "Committed and pushed kong.yaml to the repository."
                     } else {
                         echo "No changes to commit."
