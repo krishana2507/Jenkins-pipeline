@@ -27,7 +27,7 @@ pipeline {
                     
                     def config = readYaml text: configContent
                     if (config.oas_file_path) {
-                        def oasFilePath = config.oas_file_path.trim()
+                        def oasFilePath = config.oas_file_path instanceof List ? config.oas_file_path[0].trim() : config.oas_file_path.trim()
                         echo "oas_file_path found: ${oasFilePath}"
                         
                         // Read and print the content of the OAS file
@@ -46,7 +46,7 @@ pipeline {
                     }
                     
                     if (config.plugin_file_path) {
-                        def pluginFilePath = config.plugin_file_path.trim()
+                        def pluginFilePath = config.plugin_file_path instanceof List ? config.plugin_file_path[0].trim() : config.plugin_file_path.trim()
                         echo "plugin_file_path found: ${pluginFilePath}"
                         
                         // Read and print the content of the plugin YAML file
