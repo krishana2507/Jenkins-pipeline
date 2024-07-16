@@ -41,11 +41,8 @@ pipeline {
                         // Read plugin file paths and apply their configurations
                         if (config.plugin_file_path) {
                             config.plugin_file_path.each { pluginPath ->
-                                def pluginContent = readFile(pluginPath).trim()
-                                echo "Contents of ${pluginPath}:"
-                                echo pluginContent
-                                // Apply the plugin configuration to kong.yaml
-                                sh "deck file apply-plugin -s kong.yaml -p ${pluginPath}"
+                                echo "Applying plugin configuration from ${pluginPath} to kong.yaml"
+                                sh "deck file apply-plugin kong.yaml -p ${pluginPath}"
                             }
                         }
                         
