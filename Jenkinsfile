@@ -38,11 +38,11 @@ pipeline {
                         // Generate Kong config from OAS
                         sh "deck file openapi2kong -s ${oasFilePath} -o kong.yaml"
                         
-                        // Read plugin file paths and apply their configurations
+                        // Apply plugin configurations to kong.yaml
                         if (config.plugin_file_path) {
                             config.plugin_file_path.each { pluginPath ->
                                 echo "Applying plugin configuration from ${pluginPath} to kong.yaml"
-                                sh "deck file apply-plugin kong.yaml -p ${pluginPath}"
+                                sh "deck file apply-plugin ${pluginPath} kong.yaml"
                             }
                         }
                         
