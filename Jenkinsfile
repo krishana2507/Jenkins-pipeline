@@ -13,36 +13,38 @@ pipeline {
     stages {
         stage('Checkout Repository') {
             steps {
-                script {
-                    git url: params.Source_Code_GIT_URL, branch: params.Source_Code_GIT_Branch
-                }
+                git url: params.Source_Code_GIT_URL, branch: params.Source_Code_GIT_Branch
             }
         }
         stage('Read and Print YAML') {
             steps {
                 script {
-                    def configYamlPath = params.Configuration_Yaml_Path
-                    def configContent = readFile(configYamlPath).trim()
-                    echo "Config YAML Content:\n${configContent}"
-                    
-                    def config = readYaml text: configContent
-                    if (config.oas_file_path) {
-                        def oasFilePath = config.oas_file_path.trim()
-                        echo "oas_file_path found: ${oasFilePath}"
+                    try {
+                        def configYamlPath = params.Configuration_Yaml_Path
+                        def configContent = readFile(configYamlPath).trim()
+                        echo "Config YAML Content:\n${configContent}"
                         
-                        // Read and print the content of the OAS file
-                        def oasContent = readFile(oasFilePath).trim()
-                        echo "Contents of ${oasFilePath}:"
-                        echo oasContent
-                        
-                        // Generate Kong config from OAS
-                        sh "deck file openapi2kong -s ${oasFilePath} -o kong.yaml"
-                        
-                        // Read and print the content of the generated kong.yaml file
-                        def kongConfigContent = readFile('kong.yaml').trim()
-                        echo "Generated Kong config (kong.yaml) Content:\n${kongConfigContent}"
-                    } else {
-                        error "oas_file_path not found in ${params.Configuration_Yaml_Path}"
+                        def config = readYaml text: configContent
+                        if (config.oas_file_path) {
+                            def oasFilePath = config.oas_file_path.trim()
+                            echo "oas_file_path found: ${oasFilePath}"
+                            
+                            // Read and print the content of the OAS file
+                            def oasContent = readFile(oasFilePath).trim()
+                            echo "Contents of ${oasFilePath}:"
+                            echo oasContent
+                            
+                            // Generate Kong config from OAS
+                            sh "deck file openapi2kong -s ${oasFilePath} -o kong.yaml"
+                            
+                            // Read and print the content of the generated kong.yaml file
+                            def kongConfigContent = readFile('kong.yaml').trim()
+                            echo "Generated Kong config (kong.yaml) Content:\n${kongConfigContent}"
+                        } else {
+                            error "oas_file_path not found in ${params.Configuration_Yaml_Path}"
+                        }
+                    } catch (Exception e) {
+                        error "Failed to read and process YAML: ${e.getMessage()}"
                     }
                 }
             }
@@ -50,18 +52,22 @@ pipeline {
         stage('Commit kong.yaml') {
             steps {
                 script {
-                    git config --local user.email "${GIT_USER_EMAIL}"
-                    git config --local user.name "${GIT_USER_NAME}"
-                    git add 'kong.yaml'
-                    
-                    def hasChanges = sh(script: 'git status --porcelain', returnStdout: true).trim()
-                    
-                    if (!hasChanges.isEmpty()) {
-                        sh 'git commit -m "Add generated kong.yaml"'
-                        sh "git push origin ${params.Source_Code_GIT_Branch}"
-                        echo "Committed and pushed kong.yaml to the repository."
-                    } else {
-                        echo "No changes to commit."
+                    try {
+                        sh "git config --local user.email '${GIT_USER_EMAIL}'"
+                        sh "git config --local user.name '${GIT_USER_NAME}'"
+                        sh "git add kong.yaml"
+                        
+                        def hasChanges = sh(script: 'git status --porcelain', returnStdout: true).trim()
+                        
+                        if (!hasChanges.isEmpty()) {
+                            sh 'git commit -m "Add generated kong.yaml"'
+                            sh "git push origin ${params.Source_Code_GIT_Branch}"
+                            echo "Committed and pushed kong.yaml to the repository."
+                        } else {
+                            echo "No changes to commit."
+                        }
+                    } catch (Exception e) {
+                        error "Failed to commit and push kong.yaml: ${e.getMessage()}"
                     }
                 }
             }
@@ -69,16 +75,20 @@ pipeline {
         stage('Push Kong YAML to Kong Konnect') {
             steps {
                 script {
-                    def konnectToken = params.Konnect_Token
-                    def konnectControlPlaneName = 'konnect-values'
-                    def deckCmd = "deck sync kong.yaml --konnect-token ${konnectToken} --konnect-control-plane-name ${konnectControlPlaneName}"
-                    
-                    def result = sh(script: deckCmd, returnStatus: true)
-                    
-                    if (result == 0) {
-                        echo "Successfully pushed kong.yaml to Kong Konnect"
-                    } else {
-                        error "Failed to push kong.yaml to Kong Konnect. Deck command returned non-zero exit code."
+                    try {
+                        def konnectToken = params.Konnect_Token
+                        def konnectControlPlaneName = 'konnect-values'
+                        def deckCmd = "deck sync kong.yaml --konnect-token ${konnectToken} --konnect-control-plane-name ${konnectControlPlaneName}"
+                        
+                        def result = sh(script: deckCmd, returnStatus: true)
+                        
+                        if (result == 0) {
+                            echo "Successfully pushed kong.yaml to Kong Konnect"
+                        } else {
+                            error "Failed to push kong.yaml to Kong Konnect. Deck command returned non-zero exit code."
+                        }
+                    } catch (Exception e) {
+                        error "Failed to push kong.yaml to Kong Konnect: ${e.getMessage()}"
                     }
                 }
             }
