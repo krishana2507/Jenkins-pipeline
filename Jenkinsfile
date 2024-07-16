@@ -47,26 +47,6 @@ pipeline {
                 }
             }
         }
-        stage('Commit and Push kong.yaml to Repository') {
-            steps {
-                script {
-                    withCredentials([usernamePassword(credentialsId: 'github-credentials', usernameVariable: 'GIT_USERNAME', passwordVariable: 'GIT_PASSWORD')]) {
-                        sh "git config --local user.email '${GIT_USER_EMAIL}'"
-                        sh "git config --local user.name '${GIT_USER_NAME}'"
-                        sh "git add kong.yaml"
-                        
-                        def hasChanges = sh(script: 'git status --porcelain', returnStdout: true).trim()
-                        
-                        if (hasChanges) {
-                            sh "git commit -m 'Add generated kong.yaml'"
-                            sh "git push https://${GIT_USERNAME}:${GIT_PASSWORD}@github.com/krishana2507/Jenkins-pipeline.git main"
-                        } else {
-                            echo "No changes to commit."
-                        }
-                    }
-                }
-            }
-        }
         stage('Push Kong YAML to Kong Konnect') {
             steps {
                 script {
