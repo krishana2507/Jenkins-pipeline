@@ -27,7 +27,7 @@ pipeline {
                     
                     def config = readYaml text: configContent
                     if (config.oas_file_path) {
-                        def oasFilePath = config.oas_file_path instanceof List ? config.oas_file_path[0].trim() : config.oas_file_path.trim()
+                        def oasFilePath = config.oas_file_path.trim()
                         echo "oas_file_path found: ${oasFilePath}"
                         
                         // Read and print the content of the OAS file
@@ -42,17 +42,20 @@ pipeline {
                         def kongConfigContent = readFile('kong.yaml').trim()
                         echo "Generated Kong config (kong.yaml) Content:\n${kongConfigContent}"
                         
-                        // Append plugin configurations from plugin_file_path
+                        // Append key-auth plugin configuration using yq
                         if (config.plugin_file_path) {
-                            config.plugin_file_path.each { pluginFilePath ->
-                                pluginFilePath = pluginFilePath.trim()
-                                echo "Appending plugin configuration from: ${pluginFilePath}"
-                                sh "yq eval-all '.plugins += load(\"${pluginFilePath}\")' -i kong.yaml"
+                            def keyAuthPluginPath = config.plugin_file_path.find { it.contains("keyauth.yaml") }
+                            if (keyAuthPluginPath) {
+                                keyAuthPluginPath = keyAuthPluginPath.trim()
+                                echo "Appending plugin configuration from: ${keyAuthPluginPath}"
+                                sh "yq eval '.plugins += load(\"${keyAuthPluginPath}\")' -i kong.yaml"
+                                
+                                // Print updated kong.yaml content
+                                def updatedKongConfigContent = readFile('kong.yaml').trim()
+                                echo "Updated Kong config (kong.yaml) Content:\n${updatedKongConfigContent}"
+                            } else {
+                                error "keyauth.yaml not found in plugin_file_path"
                             }
-                            
-                            // Print updated kong.yaml content
-                            def updatedKongConfigContent = readFile('kong.yaml').trim()
-                            echo "Updated Kong config (kong.yaml) Content:\n${updatedKongConfigContent}"
                         } else {
                             error "plugin_file_path not found in ${params.Configuration_Yaml_Path}"
                         }
