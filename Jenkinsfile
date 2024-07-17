@@ -38,31 +38,36 @@ pipeline {
                         // Generate Kong config from OAS
                         sh "deck file openapi2kong -s ${oasFilePath} -o kong.yaml"
                         
-                        // Read and print the content of the generated kong.yaml file
-                        def kongConfig = readYaml file: 'kong.yaml'
-                        echo "Generated Kong config (kong.yaml) Content:\n${kongConfig}"
+                        // Ensure the kong.yaml file does not exist before writing
+                        sh "rm -f kong.yaml"
                         
-                        // Append all plugin configurations specified in plugin_file_path
+                        // Read and print the content of the generated kong.yaml file
+                        def kongConfigContent = readFile('kong.yaml').trim()
+                        echo "Generated Kong config (kong.yaml) Content:\n${kongConfigContent}"
+                        
+                        // Append all plugin configurations specified in plugin_file_path using yq
                         if (config.plugin_file_path) {
+                            // Ensure the plugins section exists and is an array
+                            sh "yq eval '.plugins = ( .plugins // [] )' -i kong.yaml"
+                            
                             config.plugin_file_path.each { pluginFilePath ->
                                 pluginFilePath = pluginFilePath.trim()
                                 echo "Appending plugin configuration from: ${pluginFilePath}"
                                 
-                                // Read the plugin configuration from file
+                                // Read and append the plugin configuration to each service
                                 def pluginConfig = readYaml(file: pluginFilePath)
+                                kongConfig = readYaml(file: 'kong.yaml')
                                 
-                                // Ensure plugins section exists for each service
                                 kongConfig.services.each { service ->
-                                    if (!service.plugins) {
+                                    if (service.plugins == null) {
                                         service.plugins = []
                                     }
-                                    // Append plugins to the service
                                     service.plugins += pluginConfig.plugins
                                 }
+                                
+                                // Write back the updated kong.yaml
+                                writeYaml(file: 'kong.yaml', data: kongConfig)
                             }
-                            
-                            // Write back the updated kong.yaml
-                            writeYaml file: 'kong.yaml', data: kongConfig
                             
                             // Remove _format_version using sed
                             sh "sed -i '/_format_version: \"3.0\"/d' kong.yaml"
