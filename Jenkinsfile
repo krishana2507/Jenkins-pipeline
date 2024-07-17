@@ -1,4 +1,4 @@
-pipeline {
+pipeline { 
     agent any
     parameters {
         string(name: 'Source_Code_GIT_URL', description: 'Enter GIT URL')
