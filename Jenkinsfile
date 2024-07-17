@@ -1,4 +1,4 @@
-pipeline { 
+pipeline {
     agent any
     parameters {
         string(name: 'Source_Code_GIT_URL', description: 'Enter GIT URL')
@@ -42,7 +42,7 @@ pipeline {
                         def kongConfigContent = readFile('kong.yaml').trim()
                         echo "Generated Kong config (kong.yaml) Content:\n${kongConfigContent}"
                         
-                        // Append all plugin configurations specified in plugin_file_path
+                        // Append all plugin configurations specified in plugin_file_path using yq
                         if (config.plugin_file_path) {
                             // Ensure the plugins section exists and is an array
                             sh "yq eval '.plugins = ( .plugins // [] )' -i kong.yaml"
@@ -53,17 +53,17 @@ pipeline {
                                 
                                 // Read and append the plugin configuration to each service
                                 def pluginConfig = readYaml(file: pluginFilePath)
-                                def kongConfig = readYaml(file: 'kong.yaml')
+                                kongConfig = readYaml(file: 'kong.yaml')
                                 
                                 kongConfig.services.each { service ->
-                                    if (!service.plugins) {
+                                    if (service.plugins == null) {
                                         service.plugins = []
                                     }
                                     service.plugins += pluginConfig.plugins
                                 }
                                 
                                 // Write back the updated kong.yaml
-                                writeYaml data: kongConfig, file: 'kong.yaml'
+                                writeYaml(data: kongConfig, file: 'kong.yaml')
                             }
                             
                             // Remove _format_version using sed
