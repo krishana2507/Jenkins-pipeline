@@ -44,12 +44,14 @@ pipeline {
                         
                         // Append all plugin configurations specified in plugin_file_path using yq
                         if (config.plugin_file_path) {
+                            // Ensure the plugins section exists and is an array
+                            sh "yq eval '.plugins = ( .plugins // [] )' -i kong.yaml"
+                            
                             config.plugin_file_path.each { pluginFilePath ->
                                 pluginFilePath = pluginFilePath.trim()
                                 echo "Appending plugin configuration from: ${pluginFilePath}"
                                 
-                                // Ensure the plugins section exists and is an array
-                                sh "yq eval '.plugins //= []' -i kong.yaml"
+                                // Append the plugin configuration
                                 sh "yq eval-all '.plugins += load(\"${pluginFilePath}\")' -i kong.yaml"
                             }
                             
