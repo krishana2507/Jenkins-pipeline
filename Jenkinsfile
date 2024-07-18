@@ -44,18 +44,16 @@ pipeline {
                         
                         // Append all plugin configurations specified in plugin_file_path using yq
                         if (config.plugin_file_path) {
-                             // Remove _format_version using sed
-                            sh "sed -i '/_format_version: \"3.0\"/d' load(\"${pluginFilePath}\")"
-                            sh "sed -i '/plugins /d' load(\"${pluginFilePath}\")"
-                            // Ensure the plugins section exists and is an array
-                            sh "yq eval '.plugins = ( .plugins // [] )' -i kong.yaml"
-                            
                             config.plugin_file_path.each { pluginFilePath ->
                                 pluginFilePath = pluginFilePath.trim()
-                                echo "Appending plugin configuration from: ${pluginFilePath}"
+                                echo "Processing plugin configuration from: ${pluginFilePath}"
+                                
+                                // Remove specific lines from the plugin configuration file
+                                sh "sed -i '/_format_version: \"3.0\"/d' ${pluginFilePath}"
+                                sh "sed -i '/^plugins:/d' ${pluginFilePath}"
                                 
                                 // Append the plugin configuration
-                                sh "yq eval-all '.plugins += load(\"${pluginFilePath}\")' -i kong.yaml"
+                                sh "yq eval-all '.services[] |= (select(.name == \"swagger-petstore-openapi-3-0\") | .plugins += load(\"${pluginFilePath}\") | .)' -i kong.yaml"
                             }
                             
                             // Print updated kong.yaml content
@@ -89,6 +87,101 @@ pipeline {
         }
     }
 }
+
+
+
+
+
+// pipeline { 
+//     agent any
+//     parameters {
+//         string(name: 'Source_Code_GIT_URL', description: 'Enter GIT URL')
+//         string(name: 'Source_Code_GIT_Branch', description: 'Enter GIT branch')
+//         string(name: 'Configuration_Yaml_Path', description: 'File path for configuration')
+//         string(name: 'Konnect_Token', description: 'Kong Konnect token')
+//     }
+//     environment {
+//         GIT_USER_EMAIL = 'krishna.sharma@neosalpha.com'
+//         GIT_USER_NAME = 'krishna2507'
+//     }
+//     stages {
+//         stage('Checkout Repository') {
+//             steps {
+//                 script {
+//                     git url: params.Source_Code_GIT_URL, branch: params.Source_Code_GIT_Branch
+//                 }
+//             }
+//         }
+//         stage('Read and Print YAML') {
+//             steps {
+//                 script {
+//                     def configYamlPath = params.Configuration_Yaml_Path
+//                     def configContent = readFile(configYamlPath).trim()
+//                     echo "Config YAML Content:\n${configContent}"
+                    
+//                     def config = readYaml text: configContent
+//                     if (config.oas_file_path) {
+//                         def oasFilePath = config.oas_file_path.trim()
+//                         echo "oas_file_path found: ${oasFilePath}"
+                        
+//                         // Read and print the content of the OAS file
+//                         def oasContent = readFile(oasFilePath).trim()
+//                         echo "Contents of ${oasFilePath}:"
+//                         echo oasContent
+                        
+//                         // Generate Kong config from OAS
+//                         sh "deck file openapi2kong -s ${oasFilePath} -o kong.yaml"
+                        
+//                         // Read and print the content of the generated kong.yaml file
+//                         def kongConfigContent = readFile('kong.yaml').trim()
+//                         echo "Generated Kong config (kong.yaml) Content:\n${kongConfigContent}"
+                        
+//                         // Append all plugin configurations specified in plugin_file_path using yq
+//                         if (config.plugin_file_path) {
+//                              // Remove _format_version using sed
+//                             sh "sed -i '/_format_version: \"3.0\"/d' kong.yaml"
+//                             // Ensure the plugins section exists and is an array
+//                             sh "yq eval '.plugins = ( .plugins // [] )' -i kong.yaml"
+                            
+//                             config.plugin_file_path.each { pluginFilePath ->
+//                                 pluginFilePath = pluginFilePath.trim()
+//                                 echo "Appending plugin configuration from: ${pluginFilePath}"
+                                
+//                                 // Append the plugin configuration
+//                                 sh "yq eval-all '.plugins += load(\"${pluginFilePath}\")' -i kong.yaml"
+//                             }
+                            
+//                             // Print updated kong.yaml content
+//                             def updatedKongConfigContent = readFile('kong.yaml').trim()
+//                             echo "Updated Kong config (kong.yaml) Content:\n${updatedKongConfigContent}"
+//                         } else {
+//                             error "plugin_file_path not found in ${params.Configuration_Yaml_Path}"
+//                         }
+//                     } else {
+//                         error "oas_file_path not found in ${params.Configuration_Yaml_Path}"
+//                     }
+//                 }
+//             }
+//         }
+//         stage('Push Kong YAML to Kong Konnect') {
+//             steps {
+//                 script {
+//                     def konnectToken = params.Konnect_Token
+//                     def konnectControlPlaneName = 'konnect-values'
+//                     def deckCmd = "deck sync -s kong.yaml --konnect-token=${konnectToken} --konnect-control-plane-name=${konnectControlPlaneName}"
+                    
+//                     def result = sh(script: deckCmd, returnStatus: true)
+                    
+//                     if (result == 0) {
+//                         echo "Successfully pushed kong.yaml to Kong Konnect"
+//                     } else {
+//                         error "Failed to push kong.yaml to Kong Konnect. Deck command returned non-zero exit code."
+//                     }
+//                 }
+//             }
+//         }
+//     }
+// }
 
 
 
