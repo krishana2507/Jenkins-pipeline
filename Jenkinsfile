@@ -10,7 +10,7 @@ pipeline {
         GIT_USER_EMAIL = 'krishna.sharma@neosalpha.com'
         GIT_USER_NAME = 'krishna2507'
     }
-    stages {
+    stages { 
         stage('Checkout Repository') {
             steps {
                 script {
