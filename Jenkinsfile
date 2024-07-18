@@ -44,6 +44,9 @@ pipeline {
                         
                         // Append all plugin configurations specified in plugin_file_path using yq
                         if (config.plugin_file_path) {
+                             // Remove _format_version using sed
+                            sh "sed -i '/_format_version: \"3.0\"/d' load(\"${pluginFilePath}\")"
+                            sh "sed -i '/plugins /d' load(\"${pluginFilePath}\")"
                             // Ensure the plugins section exists and is an array
                             sh "yq eval '.plugins = ( .plugins // [] )' -i kong.yaml"
                             
@@ -54,9 +57,6 @@ pipeline {
                                 // Append the plugin configuration
                                 sh "yq eval-all '.plugins += load(\"${pluginFilePath}\")' -i kong.yaml"
                             }
-                            
-                            // Remove _format_version using sed
-                            sh "sed -i '/_format_version: \"3.0\"/d' kong.yaml"
                             
                             // Print updated kong.yaml content
                             def updatedKongConfigContent = readFile('kong.yaml').trim()
