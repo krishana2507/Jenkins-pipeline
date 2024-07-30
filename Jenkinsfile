@@ -11,7 +11,7 @@ pipeline {
     environment {
         GIT_USER_EMAIL = 'krishna.sharma@neosalpha.com'
         GIT_USER_NAME = 'krishna2507'
-        AZURE_CREDENTIALS_ID = '6aae2e27-e20b-4090-885b-85c9d0567c8a'
+        AZURE_CREDENTIALS_ID = '-fC8Q~63Cjb5MtZqwTPfJPnJVYQQQdC4l3LjcaFy'
         SUBSCRIPTION_ID = '7bbf8147-1fd0-4de4-b50c-d50d378fa00c'
         RESOURCE_GROUP = 'Kong'
         AKS_CLUSTER_NAME = 'KongCluster'
