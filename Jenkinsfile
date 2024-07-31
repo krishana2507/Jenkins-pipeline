@@ -13,31 +13,32 @@ pipeline {
         SUBSCRIPTION_ID = '7bbf8147-1fd0-4de4-b50c-d50d378fa00c'
         RESOURCE_GROUP = 'kong'
         AKS_CLUSTER_NAME = 'KongCluster'
-        HELM_CHART_REPO = 'https://charts.konghq.com'
-        HELM_CHART_NAME = 'kong/kong'
-        RELEASE_NAME = 'kong'
-        NAMESPACE = 'konnect'
     }
 
     stages {
         stage('Authenticate to Azure') {
             steps {
                 script {
-                    withCredentials([azureServicePrincipal(credentialsId: AZURE_CREDENTIALS_ID, clientIdVariable: 'AZURE_CLIENT_ID', clientSecretVariable: 'AZURE_CLIENT_SECRET', tenantIdVariable: 'AZURE_TENANT_ID')]) {
-                        sh """
+                    withCredentials([usernamePassword(credentialsId: AZURE_CREDENTIALS_ID, usernameVariable: 'AZURE_CLIENT_ID', passwordVariable: 'AZURE_CLIENT_SECRET')]) {
+                        sh '''
                         az login --service-principal --username $AZURE_CLIENT_ID --password $AZURE_CLIENT_SECRET --tenant $AZURE_TENANT_ID
                         az account set --subscription $SUBSCRIPTION_ID
-                        """
+                        '''
                     }
                 }
             }
         }
+    }
 
-        // ... other stages ...
+    post {
+        success {
+            echo 'Azure authentication successful!'
+        }
+        failure {
+            echo 'Azure authentication failed!'
+        }
     }
 }
-
-
 
 
 
