@@ -1,17 +1,12 @@
 pipeline {
     agent any
 
-    parameters {
-        string(name: 'Source_Code_GIT_URL', description: 'Enter GIT URL')
-        string(name: 'Source_Code_GIT_Branch', description: 'Enter GIT branch')
-        string(name: 'Configuration_Yaml_Path', description: 'File path for configuration')
-        string(name: 'Konnect_Token', description: 'Kong Konnect token')
-    }
-
     environment {
-        AZURE_CREDENTIALS_ID = "241ddd27-1630-4dc3-a45d-878bb396d272" // Replace with actual ID from Jenkins
+        AZURE_CLIENT_ID = '4741ce1d-108a-4d71-8da3-3848de4efd8f' // Replace with your actual client ID
+        AZURE_CLIENT_SECRET = '-fC8Q~63Cjb5MtZqwTPfJPnJVYQQQdC4l3LjcaFy' // Replace with your actual client secret
+        AZURE_TENANT_ID = '947a7881-fd5e-477d-801f-b0710a36ef8d' // Replace with your actual tenant ID
         SUBSCRIPTION_ID = '7bbf8147-1fd0-4de4-b50c-d50d378fa00c'
-        RESOURCE_GROUP = 'kong'
+        RESOURCE_GROUP = ' Kong'
         AKS_CLUSTER_NAME = 'KongCluster'
     }
 
@@ -19,12 +14,10 @@ pipeline {
         stage('Authenticate to Azure') {
             steps {
                 script {
-                    withCredentials([usernamePassword(credentialsId: AZURE_CREDENTIALS_ID, usernameVariable: 'AZURE_CLIENT_ID', passwordVariable: 'AZURE_CLIENT_SECRET')]) {
-                        sh '''
-                        az login --service-principal --username $AZURE_CLIENT_ID --password $AZURE_CLIENT_SECRET --tenant $AZURE_TENANT_ID
-                        az account set --subscription $SUBSCRIPTION_ID
-                        '''
-                    }
+                    sh '''
+                    az login --service-principal --username $AZURE_CLIENT_ID --password $AZURE_CLIENT_SECRET --tenant $AZURE_TENANT_ID
+                    az account set --subscription $SUBSCRIPTION_ID
+                    '''
                 }
             }
         }
@@ -39,6 +32,7 @@ pipeline {
         }
     }
 }
+
 
 
 
