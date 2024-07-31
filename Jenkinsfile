@@ -1,4 +1,4 @@
-pipeline { 
+pipeline {
     agent any
 
     environment {
@@ -6,7 +6,7 @@ pipeline {
         AZURE_CLIENT_SECRET = '-fC8Q~63Cjb5MtZqwTPfJPnJVYQQQdC4l3LjcaFy' // Replace with your actual client secret
         AZURE_TENANT_ID = '947a7881-fd5e-477d-801f-b0710a36ef8d' // Replace with your actual tenant ID
         SUBSCRIPTION_ID = '7bbf8147-1fd0-4de4-b50c-d50d378fa00c'
-        RESOURCE_GROUP = ' Kong'
+        RESOURCE_GROUP = 'Kong'
         AKS_CLUSTER_NAME = 'KongCluster'
     }
 
@@ -14,10 +14,13 @@ pipeline {
         stage('Authenticate to Azure') {
             steps {
                 script {
-                    sh '''
-                    az login --service-principal --username $AZURE_CLIENT_ID --password $AZURE_CLIENT_SECRET --tenant $AZURE_TENANT_ID
-                    az account set --subscription $SUBSCRIPTION_ID
-                    '''
+                    // Handle secrets and special characters in the password
+                    withCredentials([string(credentialsId: 'azure-client-secret', variable: 'AZURE_CLIENT_SECRET')]) {
+                        sh '''
+                        az login --service-principal --username $AZURE_CLIENT_ID --password "$AZURE_CLIENT_SECRET" --tenant $AZURE_TENANT_ID
+                        az account set --subscription $SUBSCRIPTION_ID
+                        '''
+                    }
                 }
             }
         }
