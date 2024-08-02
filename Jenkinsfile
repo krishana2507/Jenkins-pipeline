@@ -1,11 +1,11 @@
-pipeline { 
+pipeline {
     agent any
 
     environment {
-        AWS_ACCESS_KEY_ID = credentials('aws-access-key-id') // ID of the AWS Access Key ID credential
-        AWS_SECRET_ACCESS_KEY = credentials('aws-secret-access-key') // ID of the AWS Secret Access Key credential
-        AWS_REGION = 'ap-south-1' // Specify your desired AWS region
-        CONFIG_FILE = 'eks-cluster-config.yaml' // Path to the YAML configuration file
+        AWS_ACCESS_KEY_ID = credentials('aws-access-key-id')
+        AWS_SECRET_ACCESS_KEY = credentials('aws-secret-access-key')
+        AWS_REGION = 'ap-south-1'
+        CONFIG_FILE = 'eks-cluster-config.yaml'
     }
 
     stages {
