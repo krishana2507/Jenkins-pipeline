@@ -2,8 +2,8 @@ pipeline {
     agent any
 
     environment {
-        AWS_ACCESS_KEY_ID = credentials('AKIA4RU37OCCP3HZNKDY') // Store AWS Access Key ID in Jenkins Credentials
-        AWS_SECRET_ACCESS_KEY = credentials('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') // Store AWS Secret Access Key in Jenkins Credentials
+        AWS_ACCESS_KEY_ID = credentials('aws-access-key-id') // ID of the AWS Access Key ID credential
+        AWS_SECRET_ACCESS_KEY = credentials('aws-secret-access-key') // ID of the AWS Secret Access Key credential
         AWS_REGION = 'ap-south-1' // Specify your desired AWS region
         CLUSTER_NAME = 'my-eks-cluster'
         NODEGROUP_NAME = 'my-nodegroup'
@@ -64,6 +64,7 @@ pipeline {
         }
     }
 }
+
 
 
 
