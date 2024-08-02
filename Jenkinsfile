@@ -2,36 +2,65 @@ pipeline {
     agent any
 
     environment {
-        AZURE_CLIENT_ID = '4741ce1d-108a-4d71-8da3-3848de4efd8f' // Replace with your actual client ID
-        AZURE_CLIENT_SECRET = '-fC8Q~63Cjb5MtZqwTPfJPnJVYQQQdC4l3LjcaFy' // Replace with your actual client secret
-        AZURE_TENANT_ID = '947a7881-fd5e-477d-801f-b0710a36ef8d' // Replace with your actual tenant ID
-        SUBSCRIPTION_ID = '7bbf8147-1fd0-4de4-b50c-d50d378fa00c'
-        RESOURCE_GROUP = 'Kong'
-        AKS_CLUSTER_NAME = 'KongCluster'
+        AWS_ACCESS_KEY_ID = credentials('AKIA4RU37OCCP3HZNKDY') // Store AWS Access Key ID in Jenkins Credentials
+        AWS_SECRET_ACCESS_KEY = credentials('cJcq/mSlv48MAnsmGdq8VDDQQm1ykgOVo7uuI8tO') // Store AWS Secret Access Key in Jenkins Credentials
+        AWS_REGION = 'ap-south-1' // Specify your desired AWS region
+        CLUSTER_NAME = 'my-eks-cluster'
+        NODEGROUP_NAME = 'my-nodegroup'
+        NODE_TYPE = 't3.medium'
+        NODE_COUNT = 2
     }
 
     stages {
-        stage('Authenticate to Azure') {
+        stage('Configure AWS CLI') {
             steps {
-                script {
-                    // Handle secrets and special characters in the password
-                    withCredentials([string(credentialsId: 'azure-client-secret', variable: 'AZURE_CLIENT_SECRET')]) {
-                        sh '''
-                        az login --service-principal --username $AZURE_CLIENT_ID --password "$AZURE_CLIENT_SECRET" --tenant $AZURE_TENANT_ID
-                        az account set --subscription $SUBSCRIPTION_ID
-                        '''
-                    }
-                }
+                sh '''
+                aws configure set aws_access_key_id $AWS_ACCESS_KEY_ID
+                aws configure set aws_secret_access_key $AWS_SECRET_ACCESS_KEY
+                aws configure set region $AWS_REGION
+                '''
+            }
+        }
+
+        stage('Create EKS Cluster') {
+            steps {
+                sh '''
+                eksctl create cluster \
+                    --name $CLUSTER_NAME \
+                    --region $AWS_REGION \
+                    --nodegroup-name $NODEGROUP_NAME \
+                    --node-type $NODE_TYPE \
+                    --nodes $NODE_COUNT \
+                    --nodes-min 1 \
+                    --nodes-max 4 \
+                    --managed
+                '''
+            }
+        }
+
+        stage('Update kubeconfig') {
+            steps {
+                sh '''
+                aws eks update-kubeconfig --name $CLUSTER_NAME --region $AWS_REGION
+                '''
+            }
+        }
+
+        stage('Verify Cluster') {
+            steps {
+                sh '''
+                kubectl get nodes
+                '''
             }
         }
     }
 
     post {
         success {
-            echo 'Azure authentication successful!'
+            echo 'EKS cluster created successfully!'
         }
         failure {
-            echo 'Azure authentication failed!'
+            echo 'Failed to create EKS cluster.'
         }
     }
 }
