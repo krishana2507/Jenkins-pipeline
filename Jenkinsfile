@@ -9,6 +9,8 @@ pipeline {
         NODEGROUP_NAME = 'my-nodegroup'
         NODE_TYPE = 't3.medium'
         NODE_COUNT = 2
+        VPC_ID = 'vpc-01501fc774e4e860d' // Replace with your existing VPC ID
+        SUBNET_IDS = 'subnet-0037fe209deb04f83' // Replace with your existing subnet IDs
     }
 
     stages {
@@ -33,7 +35,9 @@ pipeline {
                     --nodes $NODE_COUNT \
                     --nodes-min 1 \
                     --nodes-max 4 \
-                    --managed
+                    --managed \
+                    --vpc-id $VPC_ID \
+                    --subnets $SUBNET_IDS
                 '''
             }
         }
@@ -64,6 +68,78 @@ pipeline {
         }
     }
 }
+
+
+
+
+
+
+// pipeline {
+//     agent any
+
+//     environment {
+//         AWS_ACCESS_KEY_ID = credentials('aws-access-key-id') // ID of the AWS Access Key ID credential
+//         AWS_SECRET_ACCESS_KEY = credentials('aws-secret-access-key') // ID of the AWS Secret Access Key credential
+//         AWS_REGION = 'ap-south-1' // Specify your desired AWS region
+//         CLUSTER_NAME = 'my-eks-cluster'
+//         NODEGROUP_NAME = 'my-nodegroup'
+//         NODE_TYPE = 't3.medium'
+//         NODE_COUNT = 2
+//     }
+
+//     stages {
+//         stage('Configure AWS CLI') {
+//             steps {
+//                 sh '''
+//                 aws configure set aws_access_key_id $AWS_ACCESS_KEY_ID
+//                 aws configure set aws_secret_access_key $AWS_SECRET_ACCESS_KEY
+//                 aws configure set region $AWS_REGION
+//                 '''
+//             }
+//         }
+
+//         stage('Create EKS Cluster') {
+//             steps {
+//                 sh '''
+//                 eksctl create cluster \
+//                     --name $CLUSTER_NAME \
+//                     --region $AWS_REGION \
+//                     --nodegroup-name $NODEGROUP_NAME \
+//                     --node-type $NODE_TYPE \
+//                     --nodes $NODE_COUNT \
+//                     --nodes-min 1 \
+//                     --nodes-max 4 \
+//                     --managed
+//                 '''
+//             }
+//         }
+
+//         stage('Update kubeconfig') {
+//             steps {
+//                 sh '''
+//                 aws eks update-kubeconfig --name $CLUSTER_NAME --region $AWS_REGION
+//                 '''
+//             }
+//         }
+
+//         stage('Verify Cluster') {
+//             steps {
+//                 sh '''
+//                 kubectl get nodes
+//                 '''
+//             }
+//         }
+//     }
+
+//     post {
+//         success {
+//             echo 'EKS cluster created successfully!'
+//         }
+//         failure {
+//             echo 'Failed to create EKS cluster.'
+//         }
+//     }
+// }
 
 
 
