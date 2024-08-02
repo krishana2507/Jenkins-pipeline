@@ -30,7 +30,9 @@ pipeline {
         stage('Install Helm') {
             steps {
                 sh '''
-                curl https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
+                curl -fsSL https://get.helm.sh/helm-v3.11.0-linux-amd64.tar.gz -o helm.tar.gz
+                tar -zxvf helm.tar.gz
+                mv linux-amd64/helm /usr/local/bin/helm
                 '''
             }
         }
