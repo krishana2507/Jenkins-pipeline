@@ -5,7 +5,8 @@ pipeline {
         AWS_ACCESS_KEY_ID = credentials('aws-access-key-id')
         AWS_SECRET_ACCESS_KEY = credentials('aws-secret-access-key')
         AWS_REGION = 'ap-south-1'
-        CLUSTER_NAME = 'kong-EKSClusterRole'  // Replace with your EKS cluster name
+        CLUSTER_NAME = 'kong-EKSClusterRole  // Replace with your EKS cluster name
+        HELM_BIN = '/usr/local/bin/helm' // Adjust this if Helm is in a different location
     }
 
     stages {
@@ -27,21 +28,11 @@ pipeline {
             }
         }
 
-        stage('Install Helm') {
-            steps {
-                sh '''
-                curl -fsSL https://get.helm.sh/helm-v3.11.0-linux-amd64.tar.gz -o helm.tar.gz
-                tar -zxvf helm.tar.gz
-                mv linux-amd64/helm /usr/local/bin/helm
-                '''
-            }
-        }
-
         stage('Add Helm Repo') {
             steps {
                 sh '''
-                helm repo add kong https://charts.konghq.com
-                helm repo update
+                ${HELM_BIN} repo add kong https://charts.konghq.com
+                ${HELM_BIN} repo update
                 '''
             }
         }
@@ -49,7 +40,7 @@ pipeline {
         stage('Install Kong') {
             steps {
                 sh '''
-                helm install kong-ingress kong/kong-ingress-controller --version 3.4.0 --namespace kong --create-namespace
+                ${HELM_BIN} install kong-ingress kong/kong-ingress-controller --version 3.4.0 --namespace kong --create-namespace
                 '''
             }
         }
