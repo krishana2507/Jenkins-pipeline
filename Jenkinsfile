@@ -2,10 +2,13 @@ pipeline {
     agent any
 
     environment {
-        AWS_ACCESS_KEY_ID = credentials('aws-access-key-id')
-        AWS_SECRET_ACCESS_KEY = credentials('aws-secret-access-key')
-        AWS_REGION = 'ap-south-1'
-        CONFIG_FILE = 'eks-cluster-config.yaml'
+        AWS_ACCESS_KEY_ID = credentials('aws-access-key-id') // ID of the AWS Access Key ID credential
+        AWS_SECRET_ACCESS_KEY = credentials('aws-secret-access-key') // ID of the AWS Secret Access Key credential
+        AWS_REGION = 'ap-south-1' // Specify your desired AWS region
+        CLUSTER_NAME = 'my-eks-cluster'
+        NODEGROUP_NAME = 'my-nodegroup'
+        NODE_TYPE = 't3.medium'
+        NODE_COUNT = 2
     }
 
     stages {
@@ -22,7 +25,15 @@ pipeline {
         stage('Create EKS Cluster') {
             steps {
                 sh '''
-                eksctl create cluster -f $CONFIG_FILE
+                eksctl create cluster \
+                    --name $CLUSTER_NAME \
+                    --region $AWS_REGION \
+                    --nodegroup-name $NODEGROUP_NAME \
+                    --node-type $NODE_TYPE \
+                    --nodes $NODE_COUNT \
+                    --nodes-min 1 \
+                    --nodes-max 4 \
+                    --managed
                 '''
             }
         }
@@ -30,7 +41,7 @@ pipeline {
         stage('Update kubeconfig') {
             steps {
                 sh '''
-                aws eks update-kubeconfig --name my-eks-cluster --region $AWS_REGION
+                aws eks update-kubeconfig --name $CLUSTER_NAME --region $AWS_REGION
                 '''
             }
         }
@@ -53,78 +64,6 @@ pipeline {
         }
     }
 }
-
-
-
-
-
-
-// pipeline {
-//     agent any
-
-//     environment {
-//         AWS_ACCESS_KEY_ID = credentials('aws-access-key-id') // ID of the AWS Access Key ID credential
-//         AWS_SECRET_ACCESS_KEY = credentials('aws-secret-access-key') // ID of the AWS Secret Access Key credential
-//         AWS_REGION = 'ap-south-1' // Specify your desired AWS region
-//         CLUSTER_NAME = 'my-eks-cluster'
-//         NODEGROUP_NAME = 'my-nodegroup'
-//         NODE_TYPE = 't3.medium'
-//         NODE_COUNT = 2
-//     }
-
-//     stages {
-//         stage('Configure AWS CLI') {
-//             steps {
-//                 sh '''
-//                 aws configure set aws_access_key_id $AWS_ACCESS_KEY_ID
-//                 aws configure set aws_secret_access_key $AWS_SECRET_ACCESS_KEY
-//                 aws configure set region $AWS_REGION
-//                 '''
-//             }
-//         }
-
-//         stage('Create EKS Cluster') {
-//             steps {
-//                 sh '''
-//                 eksctl create cluster \
-//                     --name $CLUSTER_NAME \
-//                     --region $AWS_REGION \
-//                     --nodegroup-name $NODEGROUP_NAME \
-//                     --node-type $NODE_TYPE \
-//                     --nodes $NODE_COUNT \
-//                     --nodes-min 1 \
-//                     --nodes-max 4 \
-//                     --managed
-//                 '''
-//             }
-//         }
-
-//         stage('Update kubeconfig') {
-//             steps {
-//                 sh '''
-//                 aws eks update-kubeconfig --name $CLUSTER_NAME --region $AWS_REGION
-//                 '''
-//             }
-//         }
-
-//         stage('Verify Cluster') {
-//             steps {
-//                 sh '''
-//                 kubectl get nodes
-//                 '''
-//             }
-//         }
-//     }
-
-//     post {
-//         success {
-//             echo 'EKS cluster created successfully!'
-//         }
-//         failure {
-//             echo 'Failed to create EKS cluster.'
-//         }
-//     }
-// }
 
 
 
