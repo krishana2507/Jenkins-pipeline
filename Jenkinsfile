@@ -5,12 +5,7 @@ pipeline {
         AWS_ACCESS_KEY_ID = credentials('aws-access-key-id') // ID of the AWS Access Key ID credential
         AWS_SECRET_ACCESS_KEY = credentials('aws-secret-access-key') // ID of the AWS Secret Access Key credential
         AWS_REGION = 'ap-south-1' // Specify your desired AWS region
-        CLUSTER_NAME = 'my-eks-cluster'
-        NODEGROUP_NAME = 'my-nodegroup'
-        NODE_TYPE = 't3.medium'
-        NODE_COUNT = 2
-        VPC_ID = 'vpc-01501fc774e4e860d' // Replace with your existing VPC ID
-        SUBNET_IDS = 'subnet-0037fe209deb04f83' // Replace with your existing subnet IDs
+        CONFIG_FILE = 'eks-cluster-config.yaml' // Path to the YAML configuration file
     }
 
     stages {
@@ -27,17 +22,7 @@ pipeline {
         stage('Create EKS Cluster') {
             steps {
                 sh '''
-                eksctl create cluster \
-                    --name $CLUSTER_NAME \
-                    --region $AWS_REGION \
-                    --nodegroup-name $NODEGROUP_NAME \
-                    --node-type $NODE_TYPE \
-                    --nodes $NODE_COUNT \
-                    --nodes-min 1 \
-                    --nodes-max 4 \
-                    --managed \
-                    --vpc-id $VPC_ID \
-                    --subnets $SUBNET_IDS
+                eksctl create cluster -f $CONFIG_FILE
                 '''
             }
         }
@@ -45,7 +30,7 @@ pipeline {
         stage('Update kubeconfig') {
             steps {
                 sh '''
-                aws eks update-kubeconfig --name $CLUSTER_NAME --region $AWS_REGION
+                aws eks update-kubeconfig --name my-eks-cluster --region $AWS_REGION
                 '''
             }
         }
