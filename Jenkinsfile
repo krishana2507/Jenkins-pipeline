@@ -5,7 +5,7 @@ pipeline {
         AWS_ACCESS_KEY_ID = credentials('aws-access-key-id')
         AWS_SECRET_ACCESS_KEY = credentials('aws-secret-access-key')
         AWS_REGION = 'ap-south-1'
-        CLUSTER_NAME = 'kong-EKSClusterRole  // Replace with your EKS cluster name
+        CLUSTER_NAME = 'kong-EKSClusterRole'  // Replace with your EKS cluster name
         HELM_BIN = '/usr/local/bin/helm' // Adjust this if Helm is in a different location
     }
 
