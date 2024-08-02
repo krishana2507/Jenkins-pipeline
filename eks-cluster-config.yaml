@@ -10,8 +10,9 @@ vpc:
   id: vpc-01501fc774e4e860d
   subnets:
     private:
-      ap-south-1a: subnet-0037fe209deb04f83
-      # Add other private subnets if available
+      ap-south-1a:
+        id: subnet-0037fe209deb04f83
+        # Add other private subnets if available
 
 nodeGroups:
   - name: my-nodegroup
