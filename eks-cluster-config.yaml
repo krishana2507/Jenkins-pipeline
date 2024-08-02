@@ -4,7 +4,7 @@ kind: ClusterConfig
 metadata:
   name: my-eks-cluster
   region: ap-south-1
-  version: "1.21" # Specify the Kubernetes version
+  version: "1.30" # Updated to a supported Kubernetes version
 
 vpc:
   id: vpc-01501fc774e4e860d
