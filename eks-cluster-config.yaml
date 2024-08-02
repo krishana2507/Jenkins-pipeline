@@ -10,8 +10,9 @@ vpc:
   id: vpc-01501fc774e4e860d
   subnets:
     private:
-      # List subnet IDs for private subnets
       ap-south-1a: subnet-0037fe209deb04f83
+      # Add other private subnets if available
+
 nodeGroups:
   - name: my-nodegroup
     instanceType: t3.medium
