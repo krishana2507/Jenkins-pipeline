@@ -1,0 +1,23 @@
+apiVersion: eksctl.io/v1alpha5
+kind: ClusterConfig
+
+metadata:
+  name: my-eks-cluster
+  region: ap-south-1
+  version: "1.21" # Specify the Kubernetes version
+
+vpc:
+  id: vpc-01501fc774e4e860d
+  subnets:
+    private:
+      # List subnet IDs for private subnets
+      ap-south-1a: subnet-0037fe209deb04f83
+nodeGroups:
+  - name: my-nodegroup
+    instanceType: t3.medium
+    desiredCapacity: 2
+    minSize: 1
+    maxSize: 4
+    volumeSize: 20
+    ssh:
+      allow: true # Allow SSH access if needed
