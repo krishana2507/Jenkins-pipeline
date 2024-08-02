@@ -1,14 +1,11 @@
-pipeline { 
+pipeline {
     agent any
 
     environment {
-        AWS_ACCESS_KEY_ID = credentials('aws-access-key-id') // ID of the AWS Access Key ID credential
-        AWS_SECRET_ACCESS_KEY = credentials('aws-secret-access-key') // ID of the AWS Secret Access Key credential
-        AWS_REGION = 'ap-south-1' // Specify your desired AWS region
-        CLUSTER_NAME = 'my-eks-cluster'
-        NODEGROUP_NAME = 'my-nodegroup'
-        NODE_TYPE = 't3.medium'
-        NODE_COUNT = 2
+        AWS_ACCESS_KEY_ID = credentials('aws-access-key-id')
+        AWS_SECRET_ACCESS_KEY = credentials('aws-secret-access-key')
+        AWS_REGION = 'ap-south-1'
+        CLUSTER_NAME = 'kong-EKSClusterRole'  // Replace with your EKS cluster name
     }
 
     stages {
@@ -22,22 +19,6 @@ pipeline {
             }
         }
 
-        stage('Create EKS Cluster') {
-            steps {
-                sh '''
-                eksctl create cluster \
-                    --name $CLUSTER_NAME \
-                    --region $AWS_REGION \
-                    --nodegroup-name $NODEGROUP_NAME \
-                    --node-type $NODE_TYPE \
-                    --nodes $NODE_COUNT \
-                    --nodes-min 1 \
-                    --nodes-max 4 \
-                    --managed
-                '''
-            }
-        }
-
         stage('Update kubeconfig') {
             steps {
                 sh '''
@@ -46,10 +27,36 @@ pipeline {
             }
         }
 
-        stage('Verify Cluster') {
+        stage('Install Helm') {
             steps {
                 sh '''
-                kubectl get nodes
+                curl https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
+                '''
+            }
+        }
+
+        stage('Add Helm Repo') {
+            steps {
+                sh '''
+                helm repo add kong https://charts.konghq.com
+                helm repo update
+                '''
+            }
+        }
+
+        stage('Install Kong') {
+            steps {
+                sh '''
+                helm install kong-ingress kong/kong-ingress-controller --version 3.4.0 --namespace kong --create-namespace
+                '''
+            }
+        }
+
+        stage('Verify Kong Installation') {
+            steps {
+                sh '''
+                kubectl get pods --namespace kong
+                kubectl get services --namespace kong
                 '''
             }
         }
@@ -57,10 +64,10 @@ pipeline {
 
     post {
         success {
-            echo 'EKS cluster created successfully!'
+            echo 'Kong version 3.4 installed successfully on EKS!'
         }
         failure {
-            echo 'Failed to create EKS cluster.'
+            echo 'Failed to install Kong version 3.4 on EKS.'
         }
     }
 }
