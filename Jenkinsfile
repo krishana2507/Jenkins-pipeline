@@ -8,7 +8,7 @@ pipeline {
         CLUSTER_NAME = 'kong-EKSClusterRole'
         HELM_BIN = '/usr/local/bin/helm'
         SERVICE_ACCOUNT = 'jenkins-sa'
-        NAMESPACE = 'konnect'
+        NAMESPACE = 'kong-konnect'
     }
 
     stages {
@@ -36,7 +36,7 @@ pipeline {
         stage('Create Namespace') {
             steps {
                 sh '''
-                kubectl create namespace konnect || echo "Namespace already exists"
+                kubectl create namespace kong-konnect || echo "Namespace already exists"
                 '''
             }
         }
@@ -53,7 +53,7 @@ pipeline {
         stage('Create Secret') {
             steps {
                 sh '''
-                kubectl create secret tls kong-cluster-cert -n konnect --cert=certs/tls.crt --key=certs/tls.key
+                kubectl create secret tls kong-cluster-cert -n kong-konnect --cert=certs/tls.crt --key=certs/tls.key
                 '''
             }
         }
@@ -61,7 +61,7 @@ pipeline {
         stage('Install Kong Gateway') {
             steps {
                 sh '''
-                ${HELM_BIN} install my-kong kong/kong -n konnect --values values/values.yaml
+                ${HELM_BIN} install my-kong kong/kong -n kong-konnect --values values/values.yaml
                 '''
             }
         }
@@ -69,8 +69,8 @@ pipeline {
         stage('Verify Kong Installation') {
             steps {
                 sh '''
-                kubectl get pods --namespace konnect
-                kubectl get services --namespace konnect
+                kubectl get pods --namespace kong-konnect
+                kubectl get services --namespace kong-konnect
                 '''
             }
         }
