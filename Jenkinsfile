@@ -28,6 +28,14 @@ pipeline {
             }
         }
 
+        stage('Create Namespace') {
+            steps {
+                sh '''
+                kubectl create namespace kong || echo "Namespace already exists"
+                '''
+            }
+        }
+
         stage('Add Helm Repo') {
             steps {
                 sh '''
@@ -37,10 +45,18 @@ pipeline {
             }
         }
 
+        stage('Create Secret') {
+            steps {
+                sh '''
+                kubectl create secret tls kong-cluster-cert -n kong --cert=certs/tls.crt --key=certs/tls.key
+                '''
+            }
+        }
+
         stage('Install Kong Gateway') {
             steps {
                 sh '''
-                ${HELM_BIN} install kong-gateway kong/kong-gateway --version 3.4.0 --namespace kong --create-namespace
+                ${HELM_BIN} install my-kong kong/kong -n kong --values values/values.yaml
                 '''
             }
         }
@@ -57,13 +73,181 @@ pipeline {
 
     post {
         success {
-            echo 'Kong Gateway version 3.4 installed successfully on EKS!'
+            echo 'Kong Gateway installed successfully on EKS!'
         }
         failure {
-            echo 'Failed to install Kong Gateway version 3.4 on EKS.'
+            echo 'Failed to install Kong Gateway on EKS.'
         }
     }
 }
+
+
+
+
+
+
+
+// pipeline {
+//     agent any
+
+//     environment {
+//         AWS_ACCESS_KEY_ID = credentials('aws-access-key-id')
+//         AWS_SECRET_ACCESS_KEY = credentials('aws-secret-access-key')
+//         AWS_REGION = 'ap-south-1'
+//         CLUSTER_NAME = 'kong-EKSClusterRole'
+//         HELM_BIN = '/usr/local/bin/helm'
+//         REPO_URL = 'https://your-repo-url.git' // Replace with your repository URL
+//     }
+
+//     stages {
+//         stage('Clone Repository') {
+//             steps {
+//                 git branch: 'main', url: "${REPO_URL}"
+//             }
+//         }
+
+//         stage('Configure AWS CLI') {
+//             steps {
+//                 sh '''
+//                 aws configure set aws_access_key_id $AWS_ACCESS_KEY_ID
+//                 aws configure set aws_secret_access_key $AWS_SECRET_ACCESS_KEY
+//                 aws configure set region $AWS_REGION
+//                 '''
+//             }
+//         }
+
+//         stage('Update kubeconfig') {
+//             steps {
+//                 sh '''
+//                 aws eks update-kubeconfig --name $CLUSTER_NAME --region $AWS_REGION
+//                 '''
+//             }
+//         }
+
+//         stage('Create Namespace') {
+//             steps {
+//                 sh '''
+//                 kubectl create namespace kong || echo "Namespace already exists"
+//                 '''
+//             }
+//         }
+
+//         stage('Add Helm Repo') {
+//             steps {
+//                 sh '''
+//                 ${HELM_BIN} repo add kong https://charts.konghq.com
+//                 ${HELM_BIN} repo update
+//                 '''
+//             }
+//         }
+
+//         stage('Create Secret') {
+//             steps {
+//                 sh '''
+//                 kubectl create secret tls kong-cluster-cert -n kong --cert=certs/tls.crt --key=certs/tls.key
+//                 '''
+//             }
+//         }
+
+//         stage('Install Kong Gateway') {
+//             steps {
+//                 sh '''
+//                 ${HELM_BIN} install my-kong kong/kong -n kong --values values/values.yaml
+//                 '''
+//             }
+//         }
+
+//         stage('Verify Kong Installation') {
+//             steps {
+//                 sh '''
+//                 kubectl get pods --namespace kong
+//                 kubectl get services --namespace kong
+//                 '''
+//             }
+//         }
+//     }
+
+//     post {
+//         success {
+//             echo 'Kong Gateway installed successfully on EKS!'
+//         }
+//         failure {
+//             echo 'Failed to install Kong Gateway on EKS.'
+//         }
+//     }
+// }
+
+
+
+
+
+
+// pipeline {
+//     agent any
+
+//     environment {
+//         AWS_ACCESS_KEY_ID = credentials('aws-access-key-id')
+//         AWS_SECRET_ACCESS_KEY = credentials('aws-secret-access-key')
+//         AWS_REGION = 'ap-south-1'
+//         CLUSTER_NAME = 'kong-EKSClusterRole'
+//         HELM_BIN = '/usr/local/bin/helm'
+//     }
+
+//     stages {
+//         stage('Configure AWS CLI') {
+//             steps {
+//                 sh '''
+//                 aws configure set aws_access_key_id $AWS_ACCESS_KEY_ID
+//                 aws configure set aws_secret_access_key $AWS_SECRET_ACCESS_KEY
+//                 aws configure set region $AWS_REGION
+//                 '''
+//             }
+//         }
+
+//         stage('Update kubeconfig') {
+//             steps {
+//                 sh '''
+//                 aws eks update-kubeconfig --name $CLUSTER_NAME --region $AWS_REGION
+//                 '''
+//             }
+//         }
+
+//         stage('Add Helm Repo') {
+//             steps {
+//                 sh '''
+//                 ${HELM_BIN} repo add kong https://charts.konghq.com
+//                 ${HELM_BIN} repo update
+//                 '''
+//             }
+//         }
+
+//         stage('Install Kong Gateway') {
+//             steps {
+//                 sh '''
+//                 ${HELM_BIN} install kong-gateway kong/kong-gateway --version 3.4.0 --namespace kong --create-namespace
+//                 '''
+//             }
+//         }
+
+//         stage('Verify Kong Installation') {
+//             steps {
+//                 sh '''
+//                 kubectl get pods --namespace kong
+//                 kubectl get services --namespace kong
+//                 '''
+//             }
+//         }
+//     }
+
+//     post {
+//         success {
+//             echo 'Kong Gateway version 3.4 installed successfully on EKS!'
+//         }
+//         failure {
+//             echo 'Failed to install Kong Gateway version 3.4 on EKS.'
+//         }
+//     }
+// }
 
 
 
