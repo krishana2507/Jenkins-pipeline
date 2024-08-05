@@ -8,7 +8,7 @@ pipeline {
         CLUSTER_NAME = 'kong-EKSClusterRole'
         HELM_BIN = '/usr/local/bin/helm'
         SERVICE_ACCOUNT = 'jenkins-sa'
-        NAMESPACE = 'kube-system'
+        NAMESPACE = 'konnect'
     }
 
     stages {
@@ -36,7 +36,7 @@ pipeline {
         stage('Create Namespace') {
             steps {
                 sh '''
-                kubectl create namespace kong || echo "Namespace already exists"
+                kubectl create namespace konnect || echo "Namespace already exists"
                 '''
             }
         }
