@@ -1,98 +1,98 @@
 // Setup of CP and DP on kong gateway using script
-pipeline {     
-    agent any 
+// pipeline {     
+//     agent any 
 
-    environment {
-        AWS_ACCESS_KEY_ID = credentials('aws-access-key-id')
-        AWS_SECRET_ACCESS_KEY = credentials('aws-secret-access-key')
-        AWS_REGION = 'ap-south-1'
-        CLUSTER_NAME = 'kong-EKSClusterRole'
-        HELM_BIN = '/usr/local/bin/helm'
-        SERVICE_ACCOUNT = 'jenkins-sa'
-        NAMESPACE_CP = 'kong-cp'
-        NAMESPACE_DP = 'kong-dp'
-        CERTS_DIR = './certs' // Path to your certificate files
-        LICENSE_FILE = 'license.json' // Path to your Kong license file
-    }
+//     environment {
+//         AWS_ACCESS_KEY_ID = credentials('aws-access-key-id')
+//         AWS_SECRET_ACCESS_KEY = credentials('aws-secret-access-key')
+//         AWS_REGION = 'ap-south-1'
+//         CLUSTER_NAME = 'kong-EKSClusterRole'
+//         HELM_BIN = '/usr/local/bin/helm'
+//         SERVICE_ACCOUNT = 'jenkins-sa'
+//         NAMESPACE_CP = 'kong-cp'
+//         NAMESPACE_DP = 'kong-dp'
+//         CERTS_DIR = './certs' // Path to your certificate files
+//         LICENSE_FILE = 'license.json' // Path to your Kong license file
+//     }
 
-    stages {
-        stage('Configure AWS CLI') {
-            steps {
-                withCredentials([string(credentialsId: 'aws-access-key-id', variable: 'AWS_ACCESS_KEY_ID'),
-                                 string(credentialsId: 'aws-secret-access-key', variable: 'AWS_SECRET_ACCESS_KEY')]) {
-                    sh '''
-                    aws configure set aws_access_key_id $AWS_ACCESS_KEY_ID
-                    aws configure set aws_secret_access_key $AWS_SECRET_ACCESS_KEY
-                    aws configure set region $AWS_REGION
-                    '''
-                }
-            }
-        }
+//     stages {
+//         stage('Configure AWS CLI') {
+//             steps {
+//                 withCredentials([string(credentialsId: 'aws-access-key-id', variable: 'AWS_ACCESS_KEY_ID'),
+//                                  string(credentialsId: 'aws-secret-access-key', variable: 'AWS_SECRET_ACCESS_KEY')]) {
+//                     sh '''
+//                     aws configure set aws_access_key_id $AWS_ACCESS_KEY_ID
+//                     aws configure set aws_secret_access_key $AWS_SECRET_ACCESS_KEY
+//                     aws configure set region $AWS_REGION
+//                     '''
+//                 }
+//             }
+//         }
 
-        stage('Update kubeconfig') {
-            steps {
-                sh '''
-                aws eks update-kubeconfig --name $CLUSTER_NAME --region $AWS_REGION
-                '''
-            }
-        }
+//         stage('Update kubeconfig') {
+//             steps {
+//                 sh '''
+//                 aws eks update-kubeconfig --name $CLUSTER_NAME --region $AWS_REGION
+//                 '''
+//             }
+//         }
 
-        stage('Setup Namespaces') {
-            steps {
-                script {
-                    sh 'kubectl create namespace $NAMESPACE_CP || true'
-                    sh 'kubectl create namespace $NAMESPACE_DP || true'
-                }
-            }
-        }
+//         stage('Setup Namespaces') {
+//             steps {
+//                 script {
+//                     sh 'kubectl create namespace $NAMESPACE_CP || true'
+//                     sh 'kubectl create namespace $NAMESPACE_DP || true'
+//                 }
+//             }
+//         }
 
-        stage('Create Secrets') {
-            steps {
-                script {
-                    sh """
-                        kubectl create secret tls kong-cluster-cert --cert=${CERTS_DIR}/tls.crt --key=${CERTS_DIR}/tls.key -n $NAMESPACE_CP || true
-                        kubectl create secret tls kong-cluster-cert --cert=${CERTS_DIR}/tls.crt --key=${CERTS_DIR}/tls.key -n $NAMESPACE_DP || true
+//         stage('Create Secrets') {
+//             steps {
+//                 script {
+//                     sh """
+//                         kubectl create secret tls kong-cluster-cert --cert=${CERTS_DIR}/tls.crt --key=${CERTS_DIR}/tls.key -n $NAMESPACE_CP || true
+//                         kubectl create secret tls kong-cluster-cert --cert=${CERTS_DIR}/tls.crt --key=${CERTS_DIR}/tls.key -n $NAMESPACE_DP || true
                         
-                        kubectl create secret generic postgresql-password --from-literal=postgres-password=kong --from-literal=password=kong -n $NAMESPACE_CP || true
+//                         kubectl create secret generic postgresql-password --from-literal=postgres-password=kong --from-literal=password=kong -n $NAMESPACE_CP || true
                         
-                        kubectl create secret generic kong-enterprise-license --from-file=license=${LICENSE_FILE} -n $NAMESPACE_CP || true
-                        kubectl create secret generic kong-enterprise-license --from-file=license=${LICENSE_FILE} -n $NAMESPACE_DP || true
+//                         kubectl create secret generic kong-enterprise-license --from-file=license=${LICENSE_FILE} -n $NAMESPACE_CP || true
+//                         kubectl create secret generic kong-enterprise-license --from-file=license=${LICENSE_FILE} -n $NAMESPACE_DP || true
                         
-                        kubectl create secret generic kong-enterprise-superuser-password --from-literal=password=password -n $NAMESPACE_CP || true
+//                         kubectl create secret generic kong-enterprise-superuser-password --from-literal=password=password -n $NAMESPACE_CP || true
                         
-                        x='{"cookie_name":"admin_session","storage":"kong","cookie_samesite":"off","cookie_secure":false,"secret":"secret"}'
-                        kubectl create secret generic kong-session-config --from-literal=admin_gui_session_conf="${x}" -n $NAMESPACE_CP || true
-                    """
-                }
-            }
-        }
+//                         x='{"cookie_name":"admin_session","storage":"kong","cookie_samesite":"off","cookie_secure":false,"secret":"secret"}'
+//                         kubectl create secret generic kong-session-config --from-literal=admin_gui_session_conf="${x}" -n $NAMESPACE_CP || true
+//                     """
+//                 }
+//             }
+//         }
 
-        stage('Deploy Control Plane') {
-            steps {
-                script {
-                    sh """
-                        helm repo add kong https://charts.konghq.com
-                        helm repo update
-                        helm install -f ./kong_values/kong_cp_values.yaml kong-cp kong/kong --namespace $NAMESPACE_CP
-                    """
-                }
-            }
-        }
+//         stage('Deploy Control Plane') {
+//             steps {
+//                 script {
+//                     sh """
+//                         helm repo add kong https://charts.konghq.com
+//                         helm repo update
+//                         helm install -f ./kong_values/kong_cp_values.yaml kong-cp kong/kong --namespace $NAMESPACE_CP
+//                     """
+//                 }
+//             }
+//         }
 
-        stage('Deploy Data Plane') {
-            steps {
-                script {
-                    def cluster_ep = "kong-cp-kong-cluster.$NAMESPACE_CP.svc.cluster.local:8005"
-                    def telem_ep = "kong-cp-kong-clustertelemetry.$NAMESPACE_CP.svc.cluster.local:8006"
+//         stage('Deploy Data Plane') {
+//             steps {
+//                 script {
+//                     def cluster_ep = "kong-cp-kong-cluster.$NAMESPACE_CP.svc.cluster.local:8005"
+//                     def telem_ep = "kong-cp-kong-clustertelemetry.$NAMESPACE_CP.svc.cluster.local:8006"
                     
-                    sh """
-                        helm install -f ./deployment_yamls/kong_dp_values.yaml kong-dp --set env.cluster_control_plane=${cluster_ep} --set env.cluster_telemetry_endpoint=${telem_ep} kong/kong --namespace $NAMESPACE_DP
-                    """
-                }
-            }
-        }
-    }
-}
+//                     sh """
+//                         helm install -f ./deployment_yamls/kong_dp_values.yaml kong-dp --set env.cluster_control_plane=${cluster_ep} --set env.cluster_telemetry_endpoint=${telem_ep} kong/kong --namespace $NAMESPACE_DP
+//                     """
+//                 }
+//             }
+//         }
+//     }    
+// }
 
 
 
@@ -285,115 +285,115 @@ pipeline {
 
 
 
-// Correct code to deploy artifacts to kong
-// pipeline {  
-//     agent any
-//     parameters {
-//         string(name: 'Source_Code_GIT_URL', description: 'Enter GIT URL')
-//         string(name: 'Source_Code_GIT_Branch', description: 'Enter GIT branch')
-//         string(name: 'Configuration_Yaml_Path', description: 'File path for configuration')
-//         string(name: 'Konnect_Token', description: 'Kong Konnect token')
-//     }
-//     environment {
-//         GIT_USER_EMAIL = 'krishna.sharma@neosalpha.com'
-//         GIT_USER_NAME = 'krishna2507'
-//     }
-//     stages {
-//         stage('Checkout Repository') {
-//             steps {
-//                 script {
-//                     git url: params.Source_Code_GIT_URL, branch: params.Source_Code_GIT_Branch
-//                 }
-//             }
-//         }
-//         stage('Read and Print YAML') {
-//             steps {
-//                 script {
-//                     def configYamlPath = params.Configuration_Yaml_Path
-//                     def configContent = readFile(configYamlPath).trim()
-//                     echo "Config YAML Content:\n${configContent}"
+Correct code to deploy artifacts to kong
+pipeline {  
+    agent any
+    parameters {
+        string(name: 'Source_Code_GIT_URL', description: 'Enter GIT URL')
+        string(name: 'Source_Code_GIT_Branch', description: 'Enter GIT branch')
+        string(name: 'Configuration_Yaml_Path', description: 'File path for configuration')
+        string(name: 'Konnect_Token', description: 'Kong Konnect token')
+    }
+    environment {
+        GIT_USER_EMAIL = 'krishna.sharma@neosalpha.com'
+        GIT_USER_NAME = 'krishna2507'
+    }
+    stages {
+        stage('Checkout Repository') {
+            steps {
+                script {
+                    git url: params.Source_Code_GIT_URL, branch: params.Source_Code_GIT_Branch
+                }
+            }
+        }
+        stage('Read and Print YAML') {
+            steps {
+                script {
+                    def configYamlPath = params.Configuration_Yaml_Path
+                    def configContent = readFile(configYamlPath).trim()
+                    echo "Config YAML Content:\n${configContent}"
                     
-//                     def config = readYaml text: configContent
-//                     if (config.oas_file_path) {
-//                         def oasFilePath = config.oas_file_path.trim()
-//                         echo "oas_file_path found: ${oasFilePath}"
+                    def config = readYaml text: configContent
+                    if (config.oas_file_path) {
+                        def oasFilePath = config.oas_file_path.trim()
+                        echo "oas_file_path found: ${oasFilePath}"
                         
-//                         // Read and print the content of the OAS file
-//                         def oasContent = readFile(oasFilePath).trim()
-//                         echo "Contents of ${oasFilePath}:"
-//                         echo oasContent
+                        // Read and print the content of the OAS file
+                        def oasContent = readFile(oasFilePath).trim()
+                        echo "Contents of ${oasFilePath}:"
+                        echo oasContent
                         
-//                         // Generate Kong config from OAS
-//                         sh "deck file openapi2kong -s ${oasFilePath} -o kong.yaml"
+                        // Generate Kong config from OAS
+                        sh "deck file openapi2kong -s ${oasFilePath} -o kong.yaml"
                         
-//                         // Read and print the content of the generated kong.yaml file
-//                         def kongConfigContent = readFile('kong.yaml').trim()
-//                         echo "Generated Kong config (kong.yaml) Content:\n${kongConfigContent}"
+                        // Read and print the content of the generated kong.yaml file
+                        def kongConfigContent = readFile('kong.yaml').trim()
+                        echo "Generated Kong config (kong.yaml) Content:\n${kongConfigContent}"
                         
-//                         // Append global plugin configurations
-//                         if (config.global_file_path) {
-//                             config.global_file_path.each { globalFilePath ->
-//                                 globalFilePath = globalFilePath.trim()
-//                                 echo "Processing global plugin configuration from: ${globalFilePath}"
+                        // Append global plugin configurations
+                        if (config.global_file_path) {
+                            config.global_file_path.each { globalFilePath ->
+                                globalFilePath = globalFilePath.trim()
+                                echo "Processing global plugin configuration from: ${globalFilePath}"
                                 
-//                                 // Remove specific lines from the plugin configuration file
-//                                 sh "sed -i '/_format_version: \"3.0\"/d' ${globalFilePath}"
-//                                 sh "sed -i '/^plugins:/d' ${globalFilePath}"
+                                // Remove specific lines from the plugin configuration file
+                                sh "sed -i '/_format_version: \"3.0\"/d' ${globalFilePath}"
+                                sh "sed -i '/^plugins:/d' ${globalFilePath}"
                                 
-//                                 // Append the global plugin configuration
-//                                 sh "yq eval-all '.plugins += load(\"${globalFilePath}\")' -i kong.yaml"
-//                             }
+                                // Append the global plugin configuration
+                                sh "yq eval-all '.plugins += load(\"${globalFilePath}\")' -i kong.yaml"
+                            }
                             
-//                             // Print updated kong.yaml content with global plugins
-//                             def updatedKongConfigContent = readFile('kong.yaml').trim()
-//                             echo "Updated Kong config (kong.yaml) with global plugins:\n${updatedKongConfigContent}"
-//                         }
+                            // Print updated kong.yaml content with global plugins
+                            def updatedKongConfigContent = readFile('kong.yaml').trim()
+                            echo "Updated Kong config (kong.yaml) with global plugins:\n${updatedKongConfigContent}"
+                        }
                         
-//                         // Append service-specific plugin configurations
-//                         if (config.plugin_file_path) {
-//                             config.plugin_file_path.each { pluginFilePath ->
-//                                 pluginFilePath = pluginFilePath.trim()
-//                                 echo "Processing service-specific plugin configuration from: ${pluginFilePath}"
+                        // Append service-specific plugin configurations
+                        if (config.plugin_file_path) {
+                            config.plugin_file_path.each { pluginFilePath ->
+                                pluginFilePath = pluginFilePath.trim()
+                                echo "Processing service-specific plugin configuration from: ${pluginFilePath}"
                                 
-//                                 // Remove specific lines from the plugin configuration file
-//                                 sh "sed -i '/_format_version: \"3.0\"/d' ${pluginFilePath}"
-//                                 sh "sed -i '/^plugins:/d' ${pluginFilePath}"
+                                // Remove specific lines from the plugin configuration file
+                                sh "sed -i '/_format_version: \"3.0\"/d' ${pluginFilePath}"
+                                sh "sed -i '/^plugins:/d' ${pluginFilePath}"
                                 
-//                                 // Append the plugin configuration to the specified service
-//                                 sh "yq eval-all '.services[] |= (select(.name == \"swagger-petstore-openapi-3-0\") | .plugins += load(\"${pluginFilePath}\") | .)' -i kong.yaml"
-//                             }
+                                // Append the plugin configuration to the specified service
+                                sh "yq eval-all '.services[] |= (select(.name == \"swagger-petstore-openapi-3-0\") | .plugins += load(\"${pluginFilePath}\") | .)' -i kong.yaml"
+                            }
                             
-//                             // Print updated kong.yaml content with service-specific plugins
-//                             def updatedKongConfigContent = readFile('kong.yaml').trim()
-//                             echo "Updated Kong config (kong.yaml) with service-specific plugins:\n${updatedKongConfigContent}"
-//                         } else {
-//                             error "plugin_file_path not found in ${params.Configuration_Yaml_Path}"
-//                         }
-//                     } else {
-//                         error "oas_file_path not found in ${params.Configuration_Yaml_Path}"
-//                     }
-//                 }
-//             }
-//         }
-//         stage('Push Kong YAML to Kong Konnect') {
-//             steps {
-//                 script {
-//                     def konnectToken = params.Konnect_Token
-//                     def konnectControlPlaneName = 'konnect-values'
-//                     def deckCmd = "deck sync -s kong.yaml --konnect-token=${konnectToken} --konnect-control-plane-name=${konnectControlPlaneName}"
+                            // Print updated kong.yaml content with service-specific plugins
+                            def updatedKongConfigContent = readFile('kong.yaml').trim()
+                            echo "Updated Kong config (kong.yaml) with service-specific plugins:\n${updatedKongConfigContent}"
+                        } else {
+                            error "plugin_file_path not found in ${params.Configuration_Yaml_Path}"
+                        }
+                    } else {
+                        error "oas_file_path not found in ${params.Configuration_Yaml_Path}"
+                    }
+                }
+            }
+        }
+        stage('Push Kong YAML to Kong Konnect') {
+            steps {
+                script {
+                    def konnectToken = params.Konnect_Token
+                    def konnectControlPlaneName = 'konnect-values'
+                    def deckCmd = "deck sync -s kong.yaml --konnect-token=${konnectToken} --konnect-control-plane-name=${konnectControlPlaneName}"
                     
-//                     def result = sh(script: deckCmd, returnStatus: true)
+                    def result = sh(script: deckCmd, returnStatus: true)
                     
-//                     if (result == 0) {
-//                         echo "Successfully pushed kong.yaml to Kong Konnect"
-//                     } else {
-//                         error "Failed to push kong.yaml to Kong Konnect. Deck command returned non-zero exit code."
-//                     }
-//                 }
-//             }
-//         }
-//     }
-// }
+                    if (result == 0) {
+                        echo "Successfully pushed kong.yaml to Kong Konnect"
+                    } else {
+                        error "Failed to push kong.yaml to Kong Konnect. Deck command returned non-zero exit code."
+                    }
+                }
+            }
+        }
+    }
+}
 
 
 
