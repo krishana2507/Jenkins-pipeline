@@ -281,11 +281,6 @@
 
 
 
-
-
-
-
-Correct code to deploy artifacts to kong 
 pipeline {  
     agent any
     parameters {
