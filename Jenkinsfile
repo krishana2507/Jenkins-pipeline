@@ -302,7 +302,7 @@ pipeline {
             }
         }
         stage('Read and Print YAML') {
-            steps {
+            steps { 
                 script {
                     def configYamlPath = params.Configuration_Yaml_Path
                     def configContent = readFile(configYamlPath).trim()
