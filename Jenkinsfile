@@ -3,9 +3,9 @@ pipeline {
     parameters {
         string(name: 'Source_Code_GIT_URL', description: 'Enter the GIT URL for the main repository')
         string(name: 'Source_Code_GIT_Branch', description: 'Enter the GIT branch for the main repository')
+        string(name: 'Configuration_Yaml_Path', description: 'File path for configuration')
         string(name: 'OAS_Repo_GIT_URL', description: 'Enter the GIT URL for the OAS repository')
         string(name: 'OAS_Repo_GIT_Branch', description: 'Enter the GIT branch for the OAS repository')
-        string(name: 'Configuration_Yaml_Path', description: 'File path for configuration')
         string(name: 'Konnect_Token', description: 'Kong Konnect token')
     }
     environment {
