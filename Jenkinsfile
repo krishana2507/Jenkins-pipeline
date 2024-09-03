@@ -4,8 +4,6 @@ pipeline {
         string(name: 'Source_Code_GIT_URL', description: 'Enter GIT URL')
         string(name: 'Source_Code_GIT_Branch', description: 'Enter GIT branch')
         string(name: 'Configuration_Yaml_Path', description: 'File path for configuration')
-        string(name: 'OAS_Repo_URL', description: 'GIT URL for the OAS Repo')
-        string(name: 'OAS_Repo_Branch', description: 'Branch for the OAS Repo')
         string(name: 'Konnect_Token', description: 'Kong Konnect token')
     }
     environment {
@@ -28,23 +26,26 @@ pipeline {
                     echo "Config YAML Content:\n${configContent}"
                     
                     def config = readYaml text: configContent
-                    if (config.oas_file_path) {
+                    if (config.oas_repo) {
+                        def oasRepoUrl = config.oas_repo.url.trim()
+                        def oasRepoBranch = config.oas_repo.branch.trim()
+                        def oasFilePath = config.oas_repo.file_path.trim()
+                        
                         // Checkout the OAS repo
                         dir('oas-repo') {
-                            git url: params.OAS_Repo_URL, branch: params.OAS_Repo_Branch
+                            git url: oasRepoUrl, branch: oasRepoBranch
                         }
                         
-                        // Fetch the OAS file from the different repo
-                        def oasFilePath = "oas-repo/${config.oas_file_path}".trim()
-                        echo "oas_file_path found in different repo: ${oasFilePath}"
+                        def fullOasFilePath = "oas-repo/${oasFilePath}"
+                        echo "oas_file_path found in different repo: ${fullOasFilePath}"
                         
                         // Read and print the content of the OAS file
-                        def oasContent = readFile(oasFilePath).trim()
-                        echo "Contents of ${oasFilePath}:"
+                        def oasContent = readFile(fullOasFilePath).trim()
+                        echo "Contents of ${fullOasFilePath}:"
                         echo oasContent
                         
                         // Generate Kong config from OAS
-                        sh "deck file openapi2kong -s ${oasFilePath} -o kong.yaml"
+                        sh "deck file openapi2kong -s ${fullOasFilePath} -o kong.yaml"
                         
                         // Read and print the content of the generated kong.yaml file
                         def kongConfigContent = readFile('kong.yaml').trim()
@@ -90,7 +91,7 @@ pipeline {
                             error "plugin_file_path not found in ${params.Configuration_Yaml_Path}"
                         }
                     } else {
-                        error "oas_file_path not found in ${params.Configuration_Yaml_Path}"
+                        error "oas_repo not found in ${params.Configuration_Yaml_Path}"
                     }
                 }
             }
@@ -114,6 +115,7 @@ pipeline {
         }
     }
 }
+
 
 
 
