@@ -1,7 +1,7 @@
 pipeline {
     agent any
     parameters {
-        string(name: 'Konnect_Token', description: 'Kong Konnect token') 
+        string(name: 'Konnect_Token', description: 'Kong Konnect token')
     }
     environment {
         GIT_USER_EMAIL = 'krishna.sharma@neosalpha.com'
@@ -17,17 +17,28 @@ pipeline {
                     // Read the CSV content
                     def csvContent = readFile(csvFilePath).trim()
                     
-                    // Parse the CSV to extract information
+                    // Split CSV into lines (rows)
                     def csvLines = csvContent.split("\n")
-                    def headers = csvLines[0].split(",")
-                    def values = csvLines[1].split(",")   // Assuming second row contains the values
                     
-                    // Extract required fields from the CSV
-                    def apiName = values[headers.indexOf('API Name')].trim()
-                    def specUrl = values[headers.indexOf('Spec URL')].trim()
-                    def plugin = values[headers.indexOf('Plugin')].trim()
-                    def limit = values[headers.indexOf('limit')].trim()
-                    def windowSize = values[headers.indexOf('window size')].trim()
+                    // Ensure headers are split correctly into an array of strings
+                    def headers = csvLines[0].split(",").collect { it.trim() }
+                    
+                    // Extract the first row of data (after headers)
+                    def values = csvLines[1].split(",").collect { it.trim() }
+                    
+                    // Find indices of specific columns based on headers
+                    def apiNameIndex = headers.indexOf('API Name')
+                    def specUrlIndex = headers.indexOf('Spec URL')
+                    def pluginIndex = headers.indexOf('Plugin')
+                    def limitIndex = headers.indexOf('limit')
+                    def windowSizeIndex = headers.indexOf('window size')
+                    
+                    // Extract the values using the indices
+                    def apiName = values[apiNameIndex]
+                    def specUrl = values[specUrlIndex]
+                    def plugin = values[pluginIndex]
+                    def limit = values[limitIndex]
+                    def windowSize = values[windowSizeIndex]
                     
                     echo "API Name: ${apiName}"
                     echo "Spec URL: ${specUrl}"
