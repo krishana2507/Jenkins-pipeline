@@ -1,7 +1,7 @@
 pipeline {
     agent any
     parameters {
-        string(name: 'Konnect_Token', description: 'Kong Konnect token')
+        string(name: 'Konnect_Token', description: 'Kong Konnect token') 
     }
     environment {
         GIT_USER_EMAIL = 'krishna.sharma@neosalpha.com'
