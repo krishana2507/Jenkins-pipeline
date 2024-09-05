@@ -1,2 +1,0 @@
-API Name ,Spec URL,Plugin,limit,window size
-petstore-api,https://github.com/krishana2507/petstore-api.git,ratelimiting,5,60
