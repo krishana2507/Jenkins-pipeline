@@ -1,9 +1,6 @@
-pipeline {  
+pipeline {
     agent any
     parameters {
-        string(name: 'Source_Code_GIT_URL', description: 'Enter GIT URL')
-        string(name: 'Source_Code_GIT_Branch', description: 'Enter GIT branch')
-        string(name: 'Configuration_Yaml_Path', description: 'File path for configuration')
         string(name: 'Konnect_Token', description: 'Kong Konnect token')
     }
     environment {
@@ -11,88 +8,58 @@ pipeline {
         GIT_USER_NAME = 'krishna2507'
     }
     stages {
-        stage('Checkout Repository') {
+        stage('Read API Spec Details from CSV') {
             steps {
                 script {
-                    git url: params.Source_Code_GIT_URL, branch: params.Source_Code_GIT_Branch
-                }
-            }
-        }
-        stage('Read and Print YAML') {
-            steps { 
-                script {
-                    def configYamlPath = params.Configuration_Yaml_Path
-                    def configContent = readFile(configYamlPath).trim()
-                    echo "Config YAML Content:\n${configContent}"
+                    // Define the path to the CSV file
+                    def csvFilePath = 'kong.csv'
                     
-                    def config = readYaml text: configContent
-                    if (config.oas_repo) {
-                        def oasRepoUrl = config.oas_repo.url.trim()
-                        def oasRepoBranch = config.oas_repo.branch.trim()
-                        def oasFilePath = config.oas_repo.file_path.trim()
-                        
-                        // Checkout the OAS repo
-                        dir('oas-repo') {
-                            git url: oasRepoUrl, branch: oasRepoBranch
-                        }
-                        
-                        def fullOasFilePath = "oas-repo/${oasFilePath}"
-                        echo "oas_file_path found in different repo: ${fullOasFilePath}"
-                        
-                        // Read and print the content of the OAS file
-                        def oasContent = readFile(fullOasFilePath).trim()
-                        echo "Contents of ${fullOasFilePath}:"
-                        echo oasContent
-                        
-                        // Generate Kong config from OAS
-                        sh "deck file openapi2kong -s ${fullOasFilePath} -o kong.yaml"
-                        
-                        // Read and print the content of the generated kong.yaml file
-                        def kongConfigContent = readFile('kong.yaml').trim()
-                        echo "Generated Kong config (kong.yaml) Content:\n${kongConfigContent}"
-                        
-                        // Append global plugin configurations
-                        if (config.global_file_path) {
-                            config.global_file_path.each { globalFilePath ->
-                                globalFilePath = globalFilePath.trim()
-                                echo "Processing global plugin configuration from: ${globalFilePath}"
-                                
-                                // Remove specific lines from the plugin configuration file
-                                sh "sed -i '/_format_version: \"3.0\"/d' ${globalFilePath}"
-                                sh "sed -i '/^plugins:/d' ${globalFilePath}"
-                                
-                                // Append the global plugin configuration
-                                sh "yq eval-all '.plugins += load(\"${globalFilePath}\")' -i kong.yaml"
-                            }
-                            
-                            // Print updated kong.yaml content with global plugins
-                            def updatedKongConfigContent = readFile('kong.yaml').trim()
-                            echo "Updated Kong config (kong.yaml) with global plugins:\n${updatedKongConfigContent}"
-                        }
-                        
-                        // Append service-specific plugin configurations
-                        if (config.plugin_file_path) {
-                            config.plugin_file_path.each { pluginFilePath ->
-                                pluginFilePath = pluginFilePath.trim()
-                                echo "Processing service-specific plugin configuration from: ${pluginFilePath}"
-                                
-                                // Remove specific lines from the plugin configuration file
-                                sh "sed -i '/_format_version: \"3.0\"/d' ${pluginFilePath}"
-                                sh "sed -i '/^plugins:/d' ${pluginFilePath}"
-                                
-                                // Append the plugin configuration to the specified service
-                                sh "yq eval-all '.services[] |= (select(.name == \"swagger-petstore-openapi-3-0\") | .plugins += load(\"${pluginFilePath}\") | .)' -i kong.yaml"
-                            }
-                            
-                            // Print updated kong.yaml content with service-specific plugins
-                            def updatedKongConfigContent = readFile('kong.yaml').trim()
-                            echo "Updated Kong config (kong.yaml) with service-specific plugins:\n${updatedKongConfigContent}"
-                        } else {
-                            error "plugin_file_path not found in ${params.Configuration_Yaml_Path}"
-                        }
-                    } else {
-                        error "oas_repo not found in ${params.Configuration_Yaml_Path}"
+                    // Read the CSV content
+                    def csvContent = readFile(csvFilePath).trim()
+                    
+                    // Parse the CSV to extract information
+                    def csvLines = csvContent.split("\n")
+                    def headers = csvLines[0].split(",")
+                    def values = csvLines[1].split(",")   // Assuming second row contains the values
+                    
+                    // Extract required fields from the CSV
+                    def apiName = values[headers.indexOf('API Name')].trim()
+                    def specUrl = values[headers.indexOf('Spec URL')].trim()
+                    def plugin = values[headers.indexOf('Plugin')].trim()
+                    def limit = values[headers.indexOf('limit')].trim()
+                    def windowSize = values[headers.indexOf('window size')].trim()
+                    
+                    echo "API Name: ${apiName}"
+                    echo "Spec URL: ${specUrl}"
+                    echo "Plugin: ${plugin}"
+                    echo "Limit: ${limit}"
+                    echo "Window Size: ${windowSize}"
+                    
+                    // Checkout the spec repository
+                    dir('spec_repo') {
+                        git url: specUrl, branch: 'main'  // Assuming 'main' branch
                     }
+                    
+                    // OAS file path is assumed inside the cloned repo
+                    def oasFilePath = "spec_repo/petstore.yaml"
+                    
+                    // Generate Kong config from OAS
+                    sh "deck file openapi2kong -s ${oasFilePath} -o kong.yaml"
+                    
+                    // Apply the plugin settings
+                    sh """
+                    yq eval '.plugins += [{
+                        "name": "${plugin}",
+                        "config": {
+                            "limit": ${limit},
+                            "window_size": ${windowSize}
+                        }
+                    }]' -i kong.yaml
+                    """
+                    
+                    // Print the final kong.yaml
+                    def kongConfigContent = readFile('kong.yaml').trim()
+                    echo "Updated Kong config (kong.yaml) Content:\n${kongConfigContent}"
                 }
             }
         }
@@ -115,6 +82,131 @@ pipeline {
         }
     }
 }
+
+
+
+
+
+
+
+// Correct code for the kong artifacts
+// pipeline {  
+//     agent any
+//     parameters {
+//         string(name: 'Source_Code_GIT_URL', description: 'Enter GIT URL')
+//         string(name: 'Source_Code_GIT_Branch', description: 'Enter GIT branch')
+//         string(name: 'Configuration_Yaml_Path', description: 'File path for configuration')
+//         string(name: 'Konnect_Token', description: 'Kong Konnect token')
+//     }
+//     environment {
+//         GIT_USER_EMAIL = 'krishna.sharma@neosalpha.com'
+//         GIT_USER_NAME = 'krishna2507'
+//     }
+//     stages {
+//         stage('Checkout Repository') {
+//             steps {
+//                 script {
+//                     git url: params.Source_Code_GIT_URL, branch: params.Source_Code_GIT_Branch
+//                 }
+//             }
+//         }
+//         stage('Read and Print YAML') {
+//             steps { 
+//                 script {
+//                     def configYamlPath = params.Configuration_Yaml_Path
+//                     def configContent = readFile(configYamlPath).trim()
+//                     echo "Config YAML Content:\n${configContent}"
+                    
+//                     def config = readYaml text: configContent
+//                     if (config.oas_repo) {
+//                         def oasRepoUrl = config.oas_repo.url.trim()
+//                         def oasRepoBranch = config.oas_repo.branch.trim()
+//                         def oasFilePath = config.oas_repo.file_path.trim()
+                        
+//                         // Checkout the OAS repo
+//                         dir('oas-repo') {
+//                             git url: oasRepoUrl, branch: oasRepoBranch
+//                         }
+                        
+//                         def fullOasFilePath = "oas-repo/${oasFilePath}"
+//                         echo "oas_file_path found in different repo: ${fullOasFilePath}"
+                        
+//                         // Read and print the content of the OAS file
+//                         def oasContent = readFile(fullOasFilePath).trim()
+//                         echo "Contents of ${fullOasFilePath}:"
+//                         echo oasContent
+                        
+//                         // Generate Kong config from OAS
+//                         sh "deck file openapi2kong -s ${fullOasFilePath} -o kong.yaml"
+                        
+//                         // Read and print the content of the generated kong.yaml file
+//                         def kongConfigContent = readFile('kong.yaml').trim()
+//                         echo "Generated Kong config (kong.yaml) Content:\n${kongConfigContent}"
+                        
+//                         // Append global plugin configurations
+//                         if (config.global_file_path) {
+//                             config.global_file_path.each { globalFilePath ->
+//                                 globalFilePath = globalFilePath.trim()
+//                                 echo "Processing global plugin configuration from: ${globalFilePath}"
+                                
+//                                 // Remove specific lines from the plugin configuration file
+//                                 sh "sed -i '/_format_version: \"3.0\"/d' ${globalFilePath}"
+//                                 sh "sed -i '/^plugins:/d' ${globalFilePath}"
+                                
+//                                 // Append the global plugin configuration
+//                                 sh "yq eval-all '.plugins += load(\"${globalFilePath}\")' -i kong.yaml"
+//                             }
+                            
+//                             // Print updated kong.yaml content with global plugins
+//                             def updatedKongConfigContent = readFile('kong.yaml').trim()
+//                             echo "Updated Kong config (kong.yaml) with global plugins:\n${updatedKongConfigContent}"
+//                         }
+                        
+//                         // Append service-specific plugin configurations
+//                         if (config.plugin_file_path) {
+//                             config.plugin_file_path.each { pluginFilePath ->
+//                                 pluginFilePath = pluginFilePath.trim()
+//                                 echo "Processing service-specific plugin configuration from: ${pluginFilePath}"
+                                
+//                                 // Remove specific lines from the plugin configuration file
+//                                 sh "sed -i '/_format_version: \"3.0\"/d' ${pluginFilePath}"
+//                                 sh "sed -i '/^plugins:/d' ${pluginFilePath}"
+                                
+//                                 // Append the plugin configuration to the specified service
+//                                 sh "yq eval-all '.services[] |= (select(.name == \"swagger-petstore-openapi-3-0\") | .plugins += load(\"${pluginFilePath}\") | .)' -i kong.yaml"
+//                             }
+                            
+//                             // Print updated kong.yaml content with service-specific plugins
+//                             def updatedKongConfigContent = readFile('kong.yaml').trim()
+//                             echo "Updated Kong config (kong.yaml) with service-specific plugins:\n${updatedKongConfigContent}"
+//                         } else {
+//                             error "plugin_file_path not found in ${params.Configuration_Yaml_Path}"
+//                         }
+//                     } else {
+//                         error "oas_repo not found in ${params.Configuration_Yaml_Path}"
+//                     }
+//                 }
+//             }
+//         }
+//         stage('Push Kong YAML to Kong Konnect') {
+//             steps {
+//                 script {
+//                     def konnectToken = params.Konnect_Token
+//                     def konnectControlPlaneName = 'konnect-values'
+//                     def deckCmd = "deck sync -s kong.yaml --konnect-token=${konnectToken} --konnect-control-plane-name=${konnectControlPlaneName}"
+                    
+//                     def result = sh(script: deckCmd, returnStatus: true)
+                    
+//                     if (result == 0) {
+//                         echo "Successfully pushed kong.yaml to Kong Konnect"
+//                     } else {
+//                         error "Failed to push kong.yaml to Kong Konnect. Deck command returned non-zero exit code."
+//                     }
+//                 }
+//             }
+//         }
+//     }
+// }
 
 
 
