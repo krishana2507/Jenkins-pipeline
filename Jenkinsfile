@@ -60,44 +60,65 @@ pipeline {
             }
         }
 
-        stage('Checkout Config Repo and Append Rate Limiting Details') {
+        stage('Checkout Config Repo and Modify Plugin Files') {
             steps {
                 script {
                     // Checkout the second repository where config.yaml is stored
                     dir('config_repo') {
-                        git url: 'https://github.com/krishana2507/my-project.git', branch: 'main'  // Update with the correct repo
+                        git url: 'https://github.com/krishana2507/my-project.git', branch: 'main'
                     }
 
-                    // Read the config.yaml file to get file paths
+                    // Read the config.yaml file
                     def configFile = readYaml file: 'config_repo/config.yaml'
 
-                    // Get the path of the file to be modified from config.yaml
-                    def kongConfigFilePath = configFile['kongConfigFilePath']
+                    // Debug: Print contents of config.yaml
+                    echo "Config file contents: ${configFile}"
 
-                    echo "Kong Config File Path: ${kongConfigFilePath}"
+                    // Combine both plugin_file_path and global_file_path
+                    def filePaths = configFile['plugin_file_path'] + configFile['global_file_path']
 
-                    // Load kong.yaml content (assuming YAML format)
-                    def kongConfig = readYaml file: kongConfigFilePath
+                    // Iterate through each file path and append the necessary details
+                    filePaths.each { filePath ->
+                        echo "Processing file: ${filePath}"
 
-                    // Append rate-limiting plugin details to the Kong config
-                    kongConfig.plugins << [
-                        name: 'rate-limiting',
-                        config: [
-                            minute: limit,
-                            window_size: windowSize
-                        ]
-                    ]
+                        // Load the plugin file content (assuming YAML format)
+                        def pluginConfig = readYaml file: "config_repo/${filePath}"
 
-                    // Write the modified kong.yaml back
-                    writeYaml file: kongConfigFilePath, data: kongConfig
+                        // Append rate-limiting plugin details from CSV to the plugin config
+                        if (filePath.contains("ratelimmiting.yaml")) {
+                            pluginConfig.config.minute = limit
+                            pluginConfig.config.window_size = windowSize
+                        }
 
-                    // Add, commit, and push the changes
+                        // Write the modified content back to the plugin file
+                        writeYaml file: "config_repo/${filePath}", data: pluginConfig
+
+                        echo "Updated file: ${filePath}"
+                    }
+
+                    // Now append the updated configuration into the main kong.yaml
+                    def kongMainConfig = readYaml file: 'spec_repo/kong.yaml'
+                    
+                    // Append the updated plugin files to kong.yaml
+                    filePaths.each { filePath ->
+                        def updatedPluginConfig = readYaml file: "config_repo/${filePath}"
+                        
+                        // Assuming each plugin config has a 'name' and 'config' field
+                        kongMainConfig.plugins << updatedPluginConfig
+                    }
+                    
+                    // Write the updated kong.yaml back
+                    writeYaml file: 'spec_repo/kong.yaml', data: kongMainConfig
+
+                    echo "Updated kong.yaml with new plugin details from CSV."
+
+                    // Add, commit, and push the changes to the repository
                     dir('config_repo') {
                         sh '''
                             git config user.email "${GIT_USER_EMAIL}"
                             git config user.name "${GIT_USER_NAME}"
                             git add .
-                            git commit -m "Updated rate-limiting plugin details from CSV"
+                            git commit -m "Updated kong.yaml with new plugin details from CSV"
                             git push origin main
                         '''
                     }
