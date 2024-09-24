@@ -46,9 +46,9 @@ pipeline {
                     echo "Limit: ${limit}"
                     echo "Window Size: ${windowSize}"
                     
-                    // Checkout the spec repository
+                    // Checkout the API spec repository using the URL from CSV
                     dir('spec_repo') {
-                        git url: specUrl, branch: 'main'  // Assuming 'main' branch
+                        git url: specUrl, branch: 'main'  // Using specUrl from the CSV
                     }
                     
                     // OAS file path is assumed inside the cloned repo
@@ -145,7 +145,6 @@ pipeline {
         }
     }
 }
-
 
 
 
