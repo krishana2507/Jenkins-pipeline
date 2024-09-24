@@ -65,7 +65,7 @@ pipeline {
                 script {
                     // Clone the repository containing the config.yaml file
                     dir('config_repo') {
-                        git url: 'https://github.com/krishana2507/my-project.git', branch: 'main'  // Replace with the actual repo URL
+                        git url: 'https://github.com/example/config-repo.git', branch: 'main'  // Replace with the actual repo URL
                     }
 
                     // Read config.yaml
@@ -116,7 +116,18 @@ pipeline {
                     def konnectControlPlaneName = 'konnect-values'
                     def deckCmd = "deck sync -s kong.yaml --konnect-token=${konnectToken} --konnect-control-plane-name=${konnectControlPlaneName}"
                     
-                    def result = sh(script: deckCmd, re
+                    def result = sh(script: deckCmd, returnStatus: true)
+                    
+                    if (result == 0) {
+                        echo "Successfully pushed kong.yaml to Kong Konnect"
+                    } else {
+                        error "Failed to push kong.yaml to Kong Konnect. Deck command returned non-zero exit code."
+                    }
+                }
+            }
+        }
+    }
+}
 
 
 
