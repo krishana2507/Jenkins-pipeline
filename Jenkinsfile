@@ -74,43 +74,56 @@ pipeline {
                     // Debug: Print contents of config.yaml
                     echo "Config file contents: ${configFile}"
 
-                    // Combine both plugin_file_path and global_file_path
-                    def filePaths = configFile['plugin_file_path'] + configFile['global_file_path']
+                    // Split paths into service-level and global-level plugins
+                    def servicePluginsPaths = configFile['plugin_file_path']
+                    def globalPluginsPaths = configFile['global_file_path']
 
-                    // Iterate through each file path and append the necessary details
-                    filePaths.each { filePath ->
-                        echo "Processing file: ${filePath}"
+                    // Read kong.yaml
+                    def kongMainConfig = readYaml file: 'spec_repo/kong.yaml'
 
-                        // Load the plugin file content (assuming YAML format)
+                    // Ensure 'services' and 'plugins' sections exist in kong.yaml
+                    kongMainConfig.services = kongMainConfig.services ?: []
+                    kongMainConfig.plugins = kongMainConfig.plugins ?: []
+
+                    // Apply service-level plugins
+                    servicePluginsPaths.each { filePath ->
+                        echo "Processing service-level plugin: ${filePath}"
+
+                        // Load the service-level plugin file content
                         def pluginConfig = readYaml file: "config_repo/${filePath}"
 
-                        // Append rate-limiting plugin details from CSV to the plugin config
+                        // If the plugin is 'ratelimmiting', modify it with values from CSV
                         if (filePath.contains("ratelimmiting.yaml")) {
                             pluginConfig.config.minute = limit
                             pluginConfig.config.window_size = windowSize
                         }
 
-                        // Write the modified content back to the plugin file
-                        writeYaml file: "config_repo/${filePath}", data: pluginConfig
-
-                        echo "Updated file: ${filePath}"
-                    }
-
-                    // Now append the updated configuration into the main kong.yaml
-                    def kongMainConfig = readYaml file: 'spec_repo/kong.yaml'
-                    
-                    // Append the updated plugin files to kong.yaml
-                    filePaths.each { filePath ->
-                        def updatedPluginConfig = readYaml file: "config_repo/${filePath}"
+                        // Apply this plugin to all services (assuming it applies to all services)
+                        kongMainConfig.services.each { service ->
+                            service.plugins = service.plugins ?: []
+                            service.plugins << pluginConfig
+                        }
                         
-                        // Assuming each plugin config has a 'name' and 'config' field
-                        kongMainConfig.plugins << updatedPluginConfig
+                        echo "Applied service-level plugin: ${filePath} to all services"
                     }
-                    
+
+                    // Apply global-level plugins
+                    globalPluginsPaths.each { filePath ->
+                        echo "Processing global-level plugin: ${filePath}"
+
+                        // Load the global plugin file content
+                        def globalPluginConfig = readYaml file: "config_repo/${filePath}"
+
+                        // Add the plugin globally
+                        kongMainConfig.plugins << globalPluginConfig
+
+                        echo "Applied global-level plugin: ${filePath}"
+                    }
+
                     // Write the updated kong.yaml back
                     writeYaml file: 'spec_repo/kong.yaml', data: kongMainConfig
 
-                    echo "Updated kong.yaml with new plugin details from CSV."
+                    echo "Updated kong.yaml with service and global-level plugins."
 
                     // Add, commit, and push the changes to the repository
                     dir('config_repo') {
@@ -118,7 +131,7 @@ pipeline {
                             git config user.email "${GIT_USER_EMAIL}"
                             git config user.name "${GIT_USER_NAME}"
                             git add .
-                            git commit -m "Updated kong.yaml with new plugin details from CSV"
+                            git commit -m "Updated kong.yaml with service and global-level plugins"
                             git push origin main
                         '''
                     }
