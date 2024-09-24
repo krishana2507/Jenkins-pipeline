@@ -56,6 +56,11 @@ pipeline {
                     
                     // Generate Kong config from OAS
                     sh "deck file openapi2kong -s ${oasFilePath} -o kong.yaml"
+
+                    // Check if kong.yaml exists after deck command
+                    if (!fileExists('spec_repo/kong.yaml')) {
+                        error("kong.yaml file was not generated. Check deck command and ensure the input spec is valid.")
+                    }
                 }
             }
         }
@@ -85,61 +90,8 @@ pipeline {
                     kongMainConfig.services = kongMainConfig.services ?: []
                     kongMainConfig.plugins = kongMainConfig.plugins ?: []
 
-                    // Apply service-level plugins
-                    servicePluginsPaths.each { filePath ->
-                        echo "Processing service-level plugin: ${filePath}"
+                    // Apply
 
-                        // Load the service-level plugin file content
-                        def pluginConfig = readYaml file: "config_repo/${filePath}"
-
-                        // If the plugin is 'ratelimmiting', modify it with values from CSV
-                        if (filePath.contains("ratelimmiting.yaml")) {
-                            pluginConfig.config.minute = limit
-                            pluginConfig.config.window_size = windowSize
-                        }
-
-                        // Apply this plugin to all services (assuming it applies to all services)
-                        kongMainConfig.services.each { service ->
-                            service.plugins = service.plugins ?: []
-                            service.plugins << pluginConfig
-                        }
-                        
-                        echo "Applied service-level plugin: ${filePath} to all services"
-                    }
-
-                    // Apply global-level plugins
-                    globalPluginsPaths.each { filePath ->
-                        echo "Processing global-level plugin: ${filePath}"
-
-                        // Load the global plugin file content
-                        def globalPluginConfig = readYaml file: "config_repo/${filePath}"
-
-                        // Add the plugin globally
-                        kongMainConfig.plugins << globalPluginConfig
-
-                        echo "Applied global-level plugin: ${filePath}"
-                    }
-
-                    // Write the updated kong.yaml back
-                    writeYaml file: 'spec_repo/kong.yaml', data: kongMainConfig
-
-                    echo "Updated kong.yaml with service and global-level plugins."
-
-                    // Add, commit, and push the changes to the repository
-                    dir('config_repo') {
-                        sh '''
-                            git config user.email "${GIT_USER_EMAIL}"
-                            git config user.name "${GIT_USER_NAME}"
-                            git add .
-                            git commit -m "Updated kong.yaml with service and global-level plugins"
-                            git push origin main
-                        '''
-                    }
-                }
-            }
-        }
-    }
-}
 
 
 
