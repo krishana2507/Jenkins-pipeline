@@ -41,104 +41,38 @@ pipeline {
                     def windowSize = values[windowSizeIndex]
                     
                     echo "API Name: ${apiName}"
-                    echo "Spec URL: ${specUrl}"
+                    echo "Spec URL: ${specUrl}"  // Verify specUrl is correct
                     echo "Plugin: ${plugin}"
                     echo "Limit: ${limit}"
                     echo "Window Size: ${windowSize}"
                     
-                    // Checkout the API spec repository using the URL from CSV
+                    // Checkout the spec repository
                     dir('spec_repo') {
-                        git url: specUrl, branch: 'main'  // Using specUrl from the CSV
+                        echo "Cloning spec repo from: ${specUrl}"  // Add debug message before cloning
+                        git url: specUrl, branch: 'main'  // Assuming 'main' branch
                     }
                     
+                    // Verify the existence of the spec_repo and its contents
+                    echo "Verifying the contents of the cloned repository..."
+                    sh "ls -la spec_repo"  // Check that files were actually cloned
+
                     // OAS file path is assumed inside the cloned repo
                     def oasFilePath = "spec_repo/petstore.yaml"
                     
+                    // Check if OAS file exists before proceeding
+                    if (!fileExists(oasFilePath)) {
+                        error("OAS file (${oasFilePath}) does not exist in the spec repository. Please check the repository and the file path.")
+                    }
+
                     // Generate Kong config from OAS
+                    echo "Generating kong.yaml using deck..."
                     sh "deck file openapi2kong -s ${oasFilePath} -o kong.yaml"
 
-                    // Check if kong.yaml exists after deck command
+                    // Check if kong.yaml was generated successfully
                     if (!fileExists('spec_repo/kong.yaml')) {
-                        error("kong.yaml file was not generated. Check deck command and ensure the input spec is valid.")
-                    }
-                }
-            }
-        }
-
-        stage('Checkout Config Repo and Modify Plugin Files') {
-            steps {
-                script {
-                    // Checkout the second repository where config.yaml is stored
-                    dir('config_repo') {
-                        git url: 'https://github.com/krishana2507/my-project.git', branch: 'main'
-                    }
-
-                    // Read the config.yaml file
-                    def configFile = readYaml file: 'config_repo/config.yaml'
-
-                    // Debug: Print contents of config.yaml
-                    echo "Config file contents: ${configFile}"
-
-                    // Split paths into service-level and global-level plugins
-                    def servicePluginsPaths = configFile['plugin_file_path']
-                    def globalPluginsPaths = configFile['global_file_path']
-
-                    // Read kong.yaml
-                    def kongMainConfig = readYaml file: 'spec_repo/kong.yaml'
-
-                    // Ensure 'services' and 'plugins' sections exist in kong.yaml
-                    kongMainConfig.services = kongMainConfig.services ?: []
-                    kongMainConfig.plugins = kongMainConfig.plugins ?: []
-
-                    // Apply service-level plugins
-                    servicePluginsPaths.each { filePath ->
-                        echo "Processing service-level plugin: ${filePath}"
-
-                        // Load the service-level plugin file content
-                        def pluginConfig = readYaml file: "config_repo/${filePath}"
-
-                        // If the plugin is 'ratelimmiting', modify it with values from CSV
-                        if (filePath.contains("ratelimmiting.yaml")) {
-                            pluginConfig.config.minute = limit
-                            pluginConfig.config.window_size = windowSize
-                        }
-
-                        // Apply this plugin to all services (assuming it applies to all services)
-                        kongMainConfig.services.each { service ->
-                            service.plugins = service.plugins ?: []
-                            service.plugins << pluginConfig
-                        }
-                        
-                        echo "Applied service-level plugin: ${filePath} to all services"
-                    }
-
-                    // Apply global-level plugins
-                    globalPluginsPaths.each { filePath ->
-                        echo "Processing global-level plugin: ${filePath}"
-
-                        // Load the global plugin file content
-                        def globalPluginConfig = readYaml file: "config_repo/${filePath}"
-
-                        // Add the plugin globally
-                        kongMainConfig.plugins << globalPluginConfig
-
-                        echo "Applied global-level plugin: ${filePath}"
-                    }
-
-                    // Write the updated kong.yaml back
-                    writeYaml file: 'spec_repo/kong.yaml', data: kongMainConfig
-
-                    echo "Updated kong.yaml with service and global-level plugins."
-
-                    // Add, commit, and push the changes to the repository
-                    dir('config_repo') {
-                        sh '''
-                            git config user.email "${GIT_USER_EMAIL}"
-                            git config user.name "${GIT_USER_NAME}"
-                            git add .
-                            git commit -m "Updated kong.yaml with service and global-level plugins"
-                            git push origin main
-                        '''
+                        error("kong.yaml file was not generated. Check the deck command and ensure the input spec is valid.")
+                    } else {
+                        echo "kong.yaml was generated successfully."
                     }
                 }
             }
