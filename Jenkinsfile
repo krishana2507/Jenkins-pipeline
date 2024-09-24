@@ -65,7 +65,7 @@ pipeline {
                 script {
                     // Clone the repository containing the config.yaml file
                     dir('config_repo') {
-                        git url: 'https://github.com/example/config-repo.git', branch: 'main'  // Replace with the actual repo URL
+                        git url: 'https://github.com/krishana2507/my-project.git', branch: 'main'  // Replace with the actual repo URL
                     }
 
                     // Read config.yaml
