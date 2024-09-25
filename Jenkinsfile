@@ -1,12 +1,5 @@
 pipeline {
     agent any
-    parameters {
-        string(name: 'Konnect_Token', description: 'Kong Konnect token')
-    }
-    environment {
-        GIT_USER_EMAIL = 'krishna.sharma@neosalpha.com'
-        GIT_USER_NAME = 'krishna2507'
-    }
     stages {
         stage('Read API Spec Details from CSV') {
             steps {
@@ -23,15 +16,15 @@ pipeline {
                     // Ensure headers are split correctly into an array of strings
                     def headers = csvLines[0].split(",").collect { it.trim() }
                     
-                    // Extract the first row of data (after headers)
-                    def values = csvLines[1].split(",").collect { it.trim() }
-                    
                     // Find indices of specific columns based on headers
                     def apiNameIndex = headers.indexOf('API Name')
                     def specUrlIndex = headers.indexOf('Spec URL')
                     def pluginIndex = headers.indexOf('Plugin')
                     def limitIndex = headers.indexOf('limit')
                     def windowSizeIndex = headers.indexOf('window size')
+                    
+                    // Extract the first row of data (after headers)
+                    def values = csvLines[1].split(",").collect { it.trim() }
                     
                     // Extract the values using the indices
                     def apiName = values[apiNameIndex]
@@ -40,21 +33,29 @@ pipeline {
                     def limit = values[limitIndex]
                     def windowSize = values[windowSizeIndex]
                     
+                    // Print the extracted values
                     echo "API Name: ${apiName}"
-                    echo "Spec URL: ${specUrl}"
+                    echo "Spec URL: ${specUrl}"  // This prints the Spec URL
                     echo "Plugin: ${plugin}"
                     echo "Limit: ${limit}"
                     echo "Window Size: ${windowSize}"
+
+                    // Checkout the spec repository
+                    dir('spec_repo') {
+                        git url: specUrl, branch: 'main'  // Assuming 'main' branch
+                    }
+                    
+                    // OAS file path is assumed inside the cloned repo
+                    def oasFilePath = "spec_repo/petstore.yaml"  // Adjust this path as needed
+                    
+                    // Print the OAS file path
+                    echo "OAS File Path: ${oasFilePath}"
                 }
             }
         }
     }
-    post {
-        always {
-            echo 'Pipeline finished.'
-        }
-    }
 }
+
 
 
 
