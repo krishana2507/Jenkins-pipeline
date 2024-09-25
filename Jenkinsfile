@@ -19,11 +19,67 @@ pipeline {
                     
                     // Print the CSV content
                     echo "CSV Content:\n${csvContent}"
+
+                    // Split CSV into lines (rows)
+                    def csvLines = csvContent.split("\n")
+
+                    // Ensure headers are split correctly into an array of strings
+                    def headers = csvLines[0].split(",").collect { it.trim() }
+
+                    // Extract the first row of data (after headers)
+                    def values = csvLines[1].split(",").collect { it.trim() }
+
+                    // Assuming the first header corresponds to a file path
+                    def firstHeader = headers[0] // This will give you the name of the first column
+                    def filePath = values[0] // This will give you the value from the first column of the first row
+
+                    // Print the file path and its content
+                    echo "File Path from First Header (${firstHeader}): ${filePath}"
+
+                    // Print the content of the specified file
+                    if (fileExists(filePath)) {
+                        def fileContent = readFile(filePath).trim()
+                        echo "Content of ${filePath}:\n${fileContent}"
+                    } else {
+                        echo "File not found at path: ${filePath}"
+                    }
                 }
             }
         }
     }
 }
+
+
+
+
+
+
+// pipeline {
+//     agent any
+//     parameters {
+//         string(name: 'Konnect_Token', description: 'Kong Konnect token')
+//     }
+//     environment {
+//         GIT_USER_EMAIL = 'krishna.sharma@neosalpha.com'
+//         GIT_USER_NAME = 'krishna2507'
+//     }
+//     stages {
+//         stage('Read API Spec Details from CSV') {
+//             steps {
+//                 script {
+//                     // Define the path to the CSV file
+//                     def csvFilePath = 'kong.csv'
+                    
+//                     // Read the CSV content
+//                     def csvContent = readFile(csvFilePath).trim()
+                    
+//                     // Print the CSV content
+//                     echo "CSV Content:\n${csvContent}"
+//                 }
+//             }
+//         }
+//     }
+// }
 
 
 
