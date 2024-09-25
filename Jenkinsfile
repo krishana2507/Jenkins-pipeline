@@ -13,53 +13,15 @@ pipeline {
                 script {
                     // Define the path to the CSV file
                     def csvFilePath = 'kong.csv'
-
+                    
                     // Read the CSV content
                     def csvContent = readFile(csvFilePath).trim()
-
-                    // Split CSV into lines (rows)
-                    def csvLines = csvContent.split("\n")
-
-                    // Ensure headers are split correctly into an array of strings
-                    def headers = csvLines[0].split(",").collect { it.trim() }
-
-                    // Create a map for column indices
-                    def columnIndices = [:]
-                    headers.eachWithIndex { header, index ->
-                        columnIndices[header] = index
-                    }
-
-                    // Extract the first row of data (after headers)
-                    def values = csvLines[1].split(",").collect { it.trim() }
-
-                    // Dynamically fetch values based on the column names
-                    def apiName = values[columnIndices['API Name']]
-                    def specUrl = values[columnIndices['Spec URL']]
-                    def plugin = values[columnIndices['Plugin']]
-                    def limit = values[columnIndices['limit']]
-                    def windowSize = values[columnIndices['window size']]
-
-                    // Print the fetched details
-                    echo "API Name: ${apiName}"
-                    echo "Spec URL: ${specUrl}"
-                    echo "Plugin: ${plugin}"
-                    echo "Limit: ${limit}"
-                    echo "Window Size: ${windowSize}"
-
-                    // Checkout the spec repository
-                    dir('spec_repo') {
-                        git url: specUrl, branch: 'main'  // Assuming 'main' branch
-                    }
-
-                    // OAS file path is assumed inside the cloned repo
-                    def oasFilePath = "spec_repo/${apiName}.yaml" // Change this based on how the file is named
-
-                    // Print the spec
-                    sh "cat ${oasFilePath}"
+                    
+                    // Print the CSV content
+                    echo "CSV Content:\n${csvContent}"
                 }
             }
         }
-        // Other stages...
     }
 }
 
