@@ -41,10 +41,14 @@ pipeline {
                         git url: 'https://github.com/krishana2507/petstore-api.git', branch: 'main' // Checkout the repository
                     }
 
-                    // Print the content of the specified file
+                    // Check if the specified file exists and convert it to kong.yaml
                     if (fileExists("spec_repo/${filePath}")) {
-                        def fileContent = readFile("spec_repo/${filePath}").trim() // Adjust the path if necessary
-                        echo "Content of ${filePath}:\n${fileContent}"
+                        // Convert the spec file to kong.yaml using deck
+                        sh "deck file openapi2kong -s spec_repo/${filePath} -o kong.yaml"
+                        
+                        // Print the contents of kong.yaml
+                        def kongConfigContent = readFile('kong.yaml').trim() // Read the generated kong.yaml
+                        echo "Kong Configuration (kong.yaml):\n${kongConfigContent}"
                     } else {
                         echo "File not found at path: spec_repo/${filePath}"
                     }
@@ -53,6 +57,69 @@ pipeline {
         }
     }
 }
+
+
+
+
+
+
+
+
+// pipeline {
+//     agent any
+//     parameters {
+//         string(name: 'Konnect_Token', description: 'Kong Konnect token')
+//     }
+//     environment {
+//         GIT_USER_EMAIL = 'krishna.sharma@neosalpha.com'
+//         GIT_USER_NAME = 'krishna2507'
+//     }
+//     stages {
+//         stage('Read API Spec Details from CSV') {
+//             steps {
+//                 script {
+//                     // Define the path to the CSV file
+//                     def csvFilePath = 'kong.csv'
+                    
+//                     // Read the CSV content
+//                     def csvContent = readFile(csvFilePath).trim()
+                    
+//                     // Print the CSV content
+//                     echo "CSV Content:\n${csvContent}"
+
+//                     // Split CSV into lines (rows)
+//                     def csvLines = csvContent.split("\n")
+
+//                     // Ensure headers are split correctly into an array of strings
+//                     def headers = csvLines[0].split(",").collect { it.trim() }
+
+//                     // Extract the first row of data (after headers)
+//                     def values = csvLines[1].split(",").collect { it.trim() }
+
+//                     // Assuming the first header corresponds to a file path
+//                     def firstHeader = headers[0] // This will give you the name of the first column
+//                     def filePath = values[0] // This will give you the value from the first column of the first row
+
+//                     // Print the file path
+//                     echo "File Path from First Header (${firstHeader}): ${filePath}"
+
+//                     // Check if the repository containing the file exists
+//                     dir('spec_repo') {
+//                         git url: 'https://github.com/krishana2507/petstore-api.git', branch: 'main' // Checkout the repository
+//                     }
+
+//                     // Print the content of the specified file
+//                     if (fileExists("spec_repo/${filePath}")) {
+//                         def fileContent = readFile("spec_repo/${filePath}").trim() // Adjust the path if necessary
+//                         echo "Content of ${filePath}:\n${fileContent}"
+//                     } else {
+//                         echo "File not found at path: spec_repo/${filePath}"
+//                     }
+//                 }
+//             }
+//         }
+//     }
+// }
 
 
 
