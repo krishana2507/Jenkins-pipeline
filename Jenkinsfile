@@ -109,6 +109,14 @@ pipeline {
             }
         }
 
+        stage('Verify kong.yaml Contents') {
+            steps {
+                // Print the contents of kong.yaml to verify plugins have been appended
+                echo "Verifying contents of kong.yaml..."
+                sh 'cat kong.yaml'
+            }
+        }
+
         stage('Push Kong YAML to Kong Konnect') {
             steps {
                 // Push the generated Kong YAML to Kong Konnect
