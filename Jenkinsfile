@@ -1,4 +1,4 @@
-pipeline {
+pipeline { 
     agent any
     stages {
         stage('Read API Spec Details from CSV') {
