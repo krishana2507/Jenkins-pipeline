@@ -8,7 +8,7 @@ pipeline {
         GIT_USER_NAME = 'krishna2507'
     }
     stages {
-        stage('Checkout Spec Repository') {
+        stage('Read API Spec Details from CSV') {
             steps {
                 script {
                     // Define the path to the CSV file
@@ -27,121 +27,67 @@ pipeline {
                     def values = csvLines[1].split(",").collect { it.trim() }
                     
                     // Find indices of specific columns based on headers
+                    def apiNameIndex = headers.indexOf('API Name')
                     def specUrlIndex = headers.indexOf('Spec URL')
+                    def pluginIndex = headers.indexOf('Plugin')
+                    def limitIndex = headers.indexOf('limit')
+                    def windowSizeIndex = headers.indexOf('window size')
                     
                     // Extract the values using the indices
+                    def apiName = values[apiNameIndex]
                     def specUrl = values[specUrlIndex]
+                    def plugin = values[pluginIndex]
+                    def limit = values[limitIndex]
+                    def windowSize = values[windowSizeIndex]
                     
+                    echo "API Name: ${apiName}"
                     echo "Spec URL: ${specUrl}"
-                    
-                    // Checkout the spec repository
-                    dir('spec_repo') {
-                        git url: specUrl, branch: 'main'  // Assuming 'main' branch
-                    }
-                }
-            }
-        }
-
-        stage('Generate Kong Config from OAS') {
-            steps {
-                script {
-                    // OAS file path is assumed inside the cloned repo
-                    def oasFilePath = "spec_repo/petstore.yaml"
-                    
-                    // Generate Kong config from OAS
-                    sh "deck file openapi2kong -s ${oasFilePath} -o kong.yaml"
-                    
-                    echo "Kong config generated from OAS."
-                }
-            }
-        }
-
-        stage('Checkout Config Repository') {
-            steps {
-                script {
-                    // Checkout the config repository
-                    dir('config_repo') {
-                        git url: 'https://github.com/krishana2507/my-project.git', branch: 'main'
-                    }
-                }
-            }
-        }
-
-        stage('Apply Plugin Settings from Config') {
-            steps {
-                script {
-                    // Read the config.yaml content
-                    def configContent = readFile('config_repo/config.yaml').trim()
-                    def config = readYaml text: configContent
-
-                    // Apply global plugins from config.yaml
-                    if (config.global_file_path) {
-                        config.global_file_path.each { globalFilePath ->
-                            globalFilePath = globalFilePath.trim()
-                            echo "Processing global plugin configuration from: ${globalFilePath}"
-
-                            if (fileExists("config_repo/${globalFilePath}")) {
-                                // Append the global plugin configuration to kong.yaml
-                                sh """
-                                yq eval-all '(.plugins //= []) += load("config_repo/${globalFilePath}")' -i kong.yaml
-                                """
-                                echo "Global plugin ${globalFilePath} applied successfully."
-                            } else {
-                                error "Global plugin configuration file not found: config_repo/${globalFilePath}"
-                            }
-                        }
-                    }
-
-                    // Apply service-level plugins from config.yaml
-                    if (config.plugin_file_path) {
-                        config.plugin_file_path.each { pluginFilePath ->
-                            pluginFilePath = pluginFilePath.trim()
-                            echo "Processing service-level plugin configuration from: ${pluginFilePath}"
-
-                            if (fileExists("config_repo/${pluginFilePath}")) {
-                                // Append the service-level plugin configuration to kong.yaml
-                                sh """
-                                yq eval-all '(.plugins //= []) += load("config_repo/${pluginFilePath}")' -i kong.yaml
-                                """
-                                echo "Service-level plugin ${pluginFilePath} applied successfully."
-                            } else {
-                                error "Service-level plugin configuration file not found: config_repo/${pluginFilePath}"
-                            }
-                        }
-                    }
-
-                    // Print the final kong.yaml
-                    def kongConfigContent = readFile('kong.yaml').trim()
-                    echo "Updated Kong config (kong.yaml) Content:\n${kongConfigContent}"
-                }
-            }
-        }
-
-        stage('Push Kong YAML to Kong Konnect') {
-            steps {
-                script {
-                    def konnectToken = params.Konnect_Token
-                    def konnectControlPlaneName = 'konnect-values'
-                    def deckCmd = "deck sync -s kong.yaml --konnect-token=${konnectToken} --konnect-control-plane-name=${konnectControlPlaneName}"
-                    
-                    def result = sh(script: deckCmd, returnStatus: true)
-                    
-                    if (result == 0) {
-                        echo "Successfully pushed kong.yaml to Kong Konnect"
-                    } else {
-                        error "Failed to push kong.yaml to Kong Konnect. Deck command returned non-zero exit code."
-                    }
+                    echo "Plugin: ${plugin}"
+                    echo "Limit: ${limit}"
+                    echo "Window Size: ${windowSize}"
                 }
             }
         }
     }
-
     post {
         always {
             echo 'Pipeline finished.'
         }
     }
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
