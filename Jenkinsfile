@@ -64,7 +64,7 @@ pipeline {
                 script {
                     // Checkout repo 3 with config.yaml
                     dir('config_repo') {
-                        git url: 'git@github.com:https://github.com/krishana2507/my-project.git', branch: 'main'
+                        git url: 'https://github.com/krishana2507/my-project.git', branch: 'main'
                     }
                     
                     def configYamlPath = 'config_repo/config.yaml'
