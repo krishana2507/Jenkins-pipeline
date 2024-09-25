@@ -6,13 +6,6 @@ pipeline {
     }
 
     stages {
-        stage('Checkout Main Repo') {
-            steps {
-                // Checkout the repository containing the Jenkinsfile and kong.csv
-                git url: 'https://github.com/krishana2507/my-main-repo.git', branch: 'main' // replace with your main repo URL
-            }
-        }
-
         stage('Read CSV and Checkout Spec Repo') {
             steps {
                 script {
