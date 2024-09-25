@@ -1,62 +1,76 @@
 pipeline {
     agent any
-
+    parameters {
+        string(name: 'Konnect_Token', description: 'Kong Konnect token')
+    }
+    environment {
+        GIT_USER_EMAIL = 'krishna.sharma@neosalpha.com'
+        GIT_USER_NAME = 'krishna2507'
+    }
     stages {
-        stage('Checkout Main Repo') {
-            steps {
-                checkout scm
-            }
-        }
-
-        stage('Checkout OAS Repo') {
-            steps {
-                dir('oas-repo') {
-                    git url: 'https://github.com/krishana2507/petstore-api.git', branch: 'main'
-                }
-            }
-        }
-
-        stage('Checkout Config Repo') {
-            steps {
-                dir('config_repo') {
-                    git url: 'https://github.com/krishana2507/my-project.git', branch: 'main'
-                }
-            }
-        }
-
-        stage('Read CSV Details') {
+        stage('Checkout Spec Repository') {
             steps {
                 script {
-                    // Read the CSV file and process its content
-                    def csvFile = readFile('kong.csv').trim()
-                    def csvLines = csvFile.split('\n')
-                    def headers = csvLines[0].split(',')
-                    def apiDetails = []
-
-                    csvLines[1..-1].each { line ->
-                        def values = line.split(',')
-                        def apiDetail = [:]
-                        headers.eachWithIndex { header, index ->
-                            apiDetail[header.trim()] = values[index].trim()
-                        }
-                        apiDetails << apiDetail
+                    // Define the path to the CSV file
+                    def csvFilePath = 'kong.csv'
+                    
+                    // Read the CSV content
+                    def csvContent = readFile(csvFilePath).trim()
+                    
+                    // Split CSV into lines (rows)
+                    def csvLines = csvContent.split("\n")
+                    
+                    // Ensure headers are split correctly into an array of strings
+                    def headers = csvLines[0].split(",").collect { it.trim() }
+                    
+                    // Extract the first row of data (after headers)
+                    def values = csvLines[1].split(",").collect { it.trim() }
+                    
+                    // Find indices of specific columns based on headers
+                    def specUrlIndex = headers.indexOf('Spec URL')
+                    
+                    // Extract the values using the indices
+                    def specUrl = values[specUrlIndex]
+                    
+                    echo "Spec URL: ${specUrl}"
+                    
+                    // Checkout the spec repository
+                    dir('spec_repo') {
+                        git url: specUrl, branch: 'main'  // Assuming 'main' branch
                     }
-
-                    echo "Read API Details from CSV: ${apiDetails}"
                 }
             }
         }
 
-        stage('Convert OpenAPI to Kong YAML') {
+        stage('Generate Kong Config from OAS') {
             steps {
-                echo "Converting OpenAPI spec to Kong YAML..."
-                sh 'deck file openapi2kong -s oas-repo/petstore.yaml -o kong.yaml'
+                script {
+                    // OAS file path is assumed inside the cloned repo
+                    def oasFilePath = "spec_repo/petstore.yaml"
+                    
+                    // Generate Kong config from OAS
+                    sh "deck file openapi2kong -s ${oasFilePath} -o kong.yaml"
+                    
+                    echo "Kong config generated from OAS."
+                }
             }
         }
 
-        stage('Apply Plugin Settings') {
+        stage('Checkout Config Repository') {
             steps {
                 script {
+                    // Checkout the config repository
+                    dir('config_repo') {
+                        git url: 'https://github.com/krishana2507/my-project.git', branch: 'main'
+                    }
+                }
+            }
+        }
+
+        stage('Apply Plugin Settings from Config') {
+            steps {
+                script {
+                    // Read the config.yaml content
                     def configContent = readFile('config_repo/config.yaml').trim()
                     def config = readYaml text: configContent
 
@@ -95,22 +109,29 @@ pipeline {
                             }
                         }
                     }
-                }
-            }
-        }
 
-        stage('Verify kong.yaml Contents') {
-            steps {
-                echo "Verifying contents of kong.yaml..."
-                sh 'cat kong.yaml'
+                    // Print the final kong.yaml
+                    def kongConfigContent = readFile('kong.yaml').trim()
+                    echo "Updated Kong config (kong.yaml) Content:\n${kongConfigContent}"
+                }
             }
         }
 
         stage('Push Kong YAML to Kong Konnect') {
             steps {
-                echo "Pushing kong.yaml to Kong Konnect..."
-                // Example command, replace with actual push command
-                // sh 'deck sync'
+                script {
+                    def konnectToken = params.Konnect_Token
+                    def konnectControlPlaneName = 'konnect-values'
+                    def deckCmd = "deck sync -s kong.yaml --konnect-token=${konnectToken} --konnect-control-plane-name=${konnectControlPlaneName}"
+                    
+                    def result = sh(script: deckCmd, returnStatus: true)
+                    
+                    if (result == 0) {
+                        echo "Successfully pushed kong.yaml to Kong Konnect"
+                    } else {
+                        error "Failed to push kong.yaml to Kong Konnect. Deck command returned non-zero exit code."
+                    }
+                }
             }
         }
     }
@@ -121,8 +142,6 @@ pipeline {
         }
     }
 }
-
-
 
 
 
