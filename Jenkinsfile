@@ -22,34 +22,42 @@ pipeline {
                     def pluginIndex = headers.indexOf('Plugin')
                     def limitIndex = headers.indexOf('limit')
                     def windowSizeIndex = headers.indexOf('window size')
-                    
-                    // Extract the first row of data (after headers)
-                    def values = csvLines[1].split(",").collect { it.trim() }
-                    
-                    // Extract the values using the indices
-                    def apiName = values[apiNameIndex]
-                    def specUrl = values[specUrlIndex]
-                    def plugin = values[pluginIndex]
-                    def limit = values[limitIndex]
-                    def windowSize = values[windowSizeIndex]
-                    
-                    // Print the extracted values
-                    echo "API Name: ${apiName}"
-                    echo "Spec URL: ${specUrl}"  // This prints the Spec URL
-                    echo "Plugin: ${plugin}"
-                    echo "Limit: ${limit}"
-                    echo "Window Size: ${windowSize}"
 
-                    // Checkout the spec repository
-                    dir('spec_repo') {
-                        git url: specUrl, branch: 'main'  // Assuming 'main' branch
+                    // Iterate through each row of data after the header
+                    for (int i = 1; i < csvLines.length; i++) {
+                        def values = csvLines[i].split(",").collect { it.trim() }
+                        
+                        // Extract the values using the indices
+                        def apiName = values[apiNameIndex]
+                        def specUrl = values[specUrlIndex]
+                        def plugin = values[pluginIndex]
+                        def limit = values[limitIndex]
+                        def windowSize = values[windowSizeIndex]
+
+                        // Print the extracted values for the current row
+                        echo "API Name: ${apiName}"
+                        echo "Spec URL: ${specUrl}"
+                        echo "Plugin: ${plugin}"
+                        echo "Limit: ${limit}"
+                        echo "Window Size: ${windowSize}"
+
+                        // Checkout the spec repository
+                        dir('spec_repo') {
+                            git url: specUrl, branch: 'main'  // Assuming 'main' branch
+                        }
+                        
+                        // OAS file path is dynamically set based on the API name
+                        def oasFilePath = "spec_repo/${apiName}.yaml"  // Adjust the path according to your naming convention
+                        
+                        // Check if the OAS file exists before attempting to read
+                        if (fileExists(oasFilePath)) {
+                            // Print the OAS file content using cat
+                            echo "Printing contents of OAS file ${oasFilePath}:"
+                            sh "cat ${oasFilePath}"  // Print the contents of the spec file
+                        } else {
+                            echo "OAS file for ${apiName} not found at path: ${oasFilePath}"
+                        }
                     }
-                    
-                    // OAS file path is assumed inside the cloned repo
-                    def oasFilePath = "spec_repo/petstore.yaml"  // Adjust this path as needed
-                    
-                    // Print the OAS file path
-                    echo "OAS File Path: ${oasFilePath}"
                 }
             }
         }
