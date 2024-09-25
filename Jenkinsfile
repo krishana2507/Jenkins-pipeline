@@ -33,15 +33,20 @@ pipeline {
                     def firstHeader = headers[0] // This will give you the name of the first column
                     def filePath = values[0] // This will give you the value from the first column of the first row
 
-                    // Print the file path and its content
+                    // Print the file path
                     echo "File Path from First Header (${firstHeader}): ${filePath}"
 
+                    // Check if the repository containing the file exists
+                    dir('spec_repo') {
+                        git url: 'https://github.com/krishana2507/petstore-api.git', branch: 'main' // Checkout the repository
+                    }
+
                     // Print the content of the specified file
-                    if (fileExists(filePath)) {
-                        def fileContent = readFile(filePath).trim()
+                    if (fileExists("spec_repo/${filePath}")) {
+                        def fileContent = readFile("spec_repo/${filePath}").trim() // Adjust the path if necessary
                         echo "Content of ${filePath}:\n${fileContent}"
                     } else {
-                        echo "File not found at path: ${filePath}"
+                        echo "File not found at path: spec_repo/${filePath}"
                     }
                 }
             }
