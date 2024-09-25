@@ -1,130 +1,120 @@
 pipeline {
     agent any
-
     parameters {
-        string(name: 'Configuration_Yaml_Path', defaultValue: 'config_repo/config.yaml', description: 'Path to the configuration YAML file')
+        string(name: 'Konnect_Token', description: 'Kong Konnect token')
     }
-
+    environment {
+        GIT_USER_EMAIL = 'krishna.sharma@neosalpha.com'
+        GIT_USER_NAME = 'krishana2507'
+    }
     stages {
-        stage('Read CSV and Checkout Spec Repo') {
+        stage('Read API Spec Details from CSV') {
             steps {
                 script {
-                    // Read the CSV file
+                    // Read the CSV content
                     def csvContent = readFile('kong.csv').trim()
-                    echo "CSV Content:\n${csvContent}"
+                    def csvLines = csvContent.split("\n")
+                    def headers = csvLines[0].split(",").collect { it.trim() }
+                    def values = csvLines[1].split(",").collect { it.trim() }
 
-                    // Assuming the CSV is in a simple format with headers
-                    def csvRows = csvContent.split('\n').drop(1) // Skip header
-                    def apiDetails = [:]
-                    
-                    csvRows.each { row ->
-                        def columns = row.split(',')
-                        apiDetails["apiName"] = columns[0].trim() // Assuming first column is API name
-                        apiDetails["specRepoUrl"] = columns[1].trim() // Assuming second column is repo URL
-                        apiDetails["specFilePath"] = columns[2].trim() // Assuming third column is file path
-                    }
+                    // Find indices of specific columns based on headers
+                    def apiNameIndex = headers.indexOf('API Name')
+                    def specUrlIndex = headers.indexOf('Spec URL')
+                    def pluginIndex = headers.indexOf('Plugin')
+                    def limitIndex = headers.indexOf('limit')
+                    def windowSizeIndex = headers.indexOf('window size')
 
-                    // Checkout the OAS repo based on CSV details
+                    // Extract the values using the indices
+                    def apiName = values[apiNameIndex]
+                    def specUrl = values[specUrlIndex]
+                    def plugin = values[pluginIndex]
+                    def limit = values[limitIndex]
+                    def windowSize = values[windowSizeIndex]
+
+                    echo "API Name: ${apiName}"
+                    echo "Spec URL: ${specUrl}"
+                    echo "Plugin: ${plugin}"
+                    echo "Limit: ${limit}"
+                    echo "Window Size: ${windowSize}"
+
+                    // Checkout the spec repository from the URL in the CSV
                     dir('oas-repo') {
-                        git url: apiDetails["specRepoUrl"], branch: 'main' // Adjust branch if necessary
+                        git url: specUrl, branch: 'main'  // Assuming 'main' branch
                     }
 
-                    echo "Checked out OAS repo: ${apiDetails["specRepoUrl"]}"
+                    // Generate Kong config from OAS
+                    def oasFilePath = "oas-repo/petstore.yaml"
+                    sh "deck file openapi2kong -s ${oasFilePath} -o kong.yaml"
                 }
             }
         }
-
         stage('Checkout Config Repo') {
             steps {
-                // Checkout the repository containing config.yaml
-                dir('config_repo') {
-                    git url: 'https://github.com/krishana2507/my-project.git', branch: 'main' // Adjust to your config repo
+                script {
+                    // Checkout the repository containing the config.yaml
+                    dir('config_repo') {
+                        git url: 'https://github.com/krishana2507/my-project.git', branch: 'main'
+                    }
                 }
             }
         }
-
-        stage('Generate Kong Config') {
+        stage('Apply Plugin Settings') {
             steps {
                 script {
-                    // Convert OAS spec to Kong YAML
-                    sh "deck file openapi2kong -s oas-repo/${apiDetails["specFilePath"]} -o kong.yaml"
-
-                    echo "Generated Kong config from OAS spec."
-                }
-            }
-        }
-
-        stage('Process Plugin Configurations') {
-            steps {
-                script {
-                    // Read config.yaml
-                    def configContent = readFile('config_repo/${params.Configuration_Yaml_Path}').trim()
+                    // Read the config.yaml
+                    def configContent = readFile('config_repo/config.yaml').trim()
                     def config = readYaml text: configContent
 
-                    // Process global plugins
+                    // Append global plugin configurations
                     if (config.global_file_path) {
                         config.global_file_path.each { globalFilePath ->
                             globalFilePath = globalFilePath.trim()
                             echo "Processing global plugin configuration from: ${globalFilePath}"
 
-                            // Check if the file exists
-                            if (!fileExists("config_repo/${globalFilePath}")) {
-                                error "Global plugin configuration file not found: ${globalFilePath}"
-                            }
-
                             // Remove specific lines from the plugin configuration file
-                            sh "sed -i '/_format_version: \"3.0\"/d' config_repo/${globalFilePath}"
-                            sh "sed -i '/^plugins:/d' config_repo/${globalFilePath}"
+                            sh "sed -i '/_format_version: \"3.0\"/d' ${globalFilePath}"
+                            sh "sed -i '/^plugins:/d' ${globalFilePath}"
 
                             // Append the global plugin configuration
-                            sh "yq eval-all '.plugins += load(\"config_repo/${globalFilePath}\")' -i kong.yaml"
+                            sh "yq eval-all '.plugins += load(\"${globalFilePath}\")' -i kong.yaml"
                         }
                     }
 
-                    // Process service-specific plugins
+                    // Append service-specific plugin configurations
                     if (config.plugin_file_path) {
                         config.plugin_file_path.each { pluginFilePath ->
                             pluginFilePath = pluginFilePath.trim()
                             echo "Processing service-specific plugin configuration from: ${pluginFilePath}"
 
-                            // Check if the file exists
-                            if (!fileExists("config_repo/${pluginFilePath}")) {
-                                error "Service plugin configuration file not found: ${pluginFilePath}"
-                            }
-
                             // Remove specific lines from the plugin configuration file
-                            sh "sed -i '/_format_version: \"3.0\"/d' config_repo/${pluginFilePath}"
-                            sh "sed -i '/^plugins:/d' config_repo/${pluginFilePath}"
+                            sh "sed -i '/_format_version: \"3.0\"/d' ${pluginFilePath}"
+                            sh "sed -i '/^plugins:/d' ${pluginFilePath}"
 
                             // Append the plugin configuration to the specified service
-                            sh "yq eval-all '.services[] |= (select(.name == \"${apiDetails["apiName"]}\") | .plugins += load(\"config_repo/${pluginFilePath}\") | .)' -i kong.yaml"
+                            sh "yq eval-all '.services[] |= (select(.name == \"${apiName}\") | .plugins += load(\"${pluginFilePath}\") | .)' -i kong.yaml"
                         }
                     } else {
-                        error "plugin_file_path not found in ${params.Configuration_Yaml_Path}"
+                        error "plugin_file_path not found in config.yaml"
                     }
-
-                    echo "Processed plugin configurations successfully."
                 }
             }
         }
-
         stage('Push Kong YAML to Kong Konnect') {
             steps {
-                // This is where you would push the generated kong.yaml to Kong Konnect
-                echo "Pushing kong.yaml to Kong Konnect..."
-                // Add your push command here
-            }
-        }
-    }
+                script {
+                    def konnectToken = params.Konnect_Token
+                    def konnectControlPlaneName = 'konnect-values'
+                    def deckCmd = "deck sync -s kong.yaml --konnect-token=${konnectToken} --konnect-control-plane-name=${konnectControlPlaneName}"
 
-    post {
-        always {
-            // Cleanup steps if necessary
-            echo "Pipeline completed."
-        }
-        failure {
-            // Actions to take if the pipeline fails
-            echo "Pipeline failed."
+                    def result = sh(script: deckCmd, returnStatus: true)
+
+                    if (result == 0) {
+                        echo "Successfully pushed kong.yaml to Kong Konnect"
+                    } else {
+                        error "Failed to push kong.yaml to Kong Konnect. Deck command returned non-zero exit code."
+                    }
+                }
+            }
         }
     }
 }
