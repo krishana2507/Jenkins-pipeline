@@ -1,68 +1,68 @@
-pipeline { 
+pipeline {
     agent any
+    parameters {
+        string(name: 'Konnect_Token', description: 'Kong Konnect token')
+    }
+    environment {
+        GIT_USER_EMAIL = 'krishna.sharma@neosalpha.com'
+        GIT_USER_NAME = 'krishna2507'
+    }
     stages {
         stage('Read API Spec Details from CSV') {
             steps {
                 script {
                     // Define the path to the CSV file
                     def csvFilePath = 'kong.csv'
-                    
+
                     // Read the CSV content
                     def csvContent = readFile(csvFilePath).trim()
-                    
+
                     // Split CSV into lines (rows)
                     def csvLines = csvContent.split("\n")
-                    
+
                     // Ensure headers are split correctly into an array of strings
                     def headers = csvLines[0].split(",").collect { it.trim() }
-                    
-                    // Find indices of specific columns based on headers
-                    def apiNameIndex = headers.indexOf('API Name')
-                    def specUrlIndex = headers.indexOf('Spec URL')
-                    def pluginIndex = headers.indexOf('Plugin')
-                    def limitIndex = headers.indexOf('limit')
-                    def windowSizeIndex = headers.indexOf('window size')
 
-                    // Iterate through each row of data after the header
-                    for (int i = 1; i < csvLines.length; i++) {
-                        def values = csvLines[i].split(",").collect { it.trim() }
-                        
-                        // Extract the values using the indices
-                        def apiName = values[apiNameIndex]
-                        def specUrl = values[specUrlIndex]
-                        def plugin = values[pluginIndex]
-                        def limit = values[limitIndex]
-                        def windowSize = values[windowSizeIndex]
-
-                        // Print the extracted values for the current row
-                        echo "API Name: ${apiName}"
-                        echo "Spec URL: ${specUrl}"
-                        echo "Plugin: ${plugin}"
-                        echo "Limit: ${limit}"
-                        echo "Window Size: ${windowSize}"
-
-                        // Checkout the spec repository
-                        dir('spec_repo') {
-                            git url: specUrl, branch: 'main'  // Assuming 'main' branch
-                        }
-                        
-                        // OAS file path is dynamically set based on the API name
-                        def oasFilePath = "spec_repo/${apiName}.yaml"  // Adjust the path according to your naming convention
-                        
-                        // Check if the OAS file exists before attempting to read
-                        if (fileExists(oasFilePath)) {
-                            // Print the OAS file content using cat
-                            echo "Printing contents of OAS file ${oasFilePath}:"
-                            sh "cat ${oasFilePath}"  // Print the contents of the spec file
-                        } else {
-                            echo "OAS file for ${apiName} not found at path: ${oasFilePath}"
-                        }
+                    // Create a map for column indices
+                    def columnIndices = [:]
+                    headers.eachWithIndex { header, index ->
+                        columnIndices[header] = index
                     }
+
+                    // Extract the first row of data (after headers)
+                    def values = csvLines[1].split(",").collect { it.trim() }
+
+                    // Dynamically fetch values based on the column names
+                    def apiName = values[columnIndices['API Name']]
+                    def specUrl = values[columnIndices['Spec URL']]
+                    def plugin = values[columnIndices['Plugin']]
+                    def limit = values[columnIndices['limit']]
+                    def windowSize = values[columnIndices['window size']]
+
+                    // Print the fetched details
+                    echo "API Name: ${apiName}"
+                    echo "Spec URL: ${specUrl}"
+                    echo "Plugin: ${plugin}"
+                    echo "Limit: ${limit}"
+                    echo "Window Size: ${windowSize}"
+
+                    // Checkout the spec repository
+                    dir('spec_repo') {
+                        git url: specUrl, branch: 'main'  // Assuming 'main' branch
+                    }
+
+                    // OAS file path is assumed inside the cloned repo
+                    def oasFilePath = "spec_repo/${apiName}.yaml" // Change this based on how the file is named
+
+                    // Print the spec
+                    sh "cat ${oasFilePath}"
                 }
             }
         }
+        // Other stages...
     }
 }
+
 
 
 
