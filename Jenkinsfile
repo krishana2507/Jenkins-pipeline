@@ -27,7 +27,7 @@ pipeline {
                     def headers = csvLines[0].split(",").collect { it.trim() }
                     def values = csvLines[1].split(",").collect { it.trim() }
                     def filePath = values[0]
-                    
+
                     echo "File Path from First Header (${headers[0]}): ${filePath}"
 
                     // Check if the file exists in the checked-out spec repository
@@ -93,8 +93,61 @@ pipeline {
                 }
             }
         }
+        stage('Append Plugin Data from CSV') {
+            steps {
+                script {
+                    // Read CSV file
+                    def csvContent = readFile('kong.csv').trim()
+                    def csvLines = csvContent.split("\n")
+                    def headers = csvLines[0].split(",").collect { it.trim() }
+                    
+                    // Read kong.yaml
+                    def kongYamlContent = readFile('kong.yaml').trim()
+                    def kongYaml = readYaml(text: kongYamlContent)
+                    
+                    // Read config.yaml
+                    def configContent = readFile('config_repo/config.yaml').trim()
+                    def configYaml = readYaml(text: configContent)
+
+                    // Loop through CSV lines (starting from line 1, skipping the header)
+                    csvLines.drop(1).each { line ->
+                        def values = line.split(",").collect { it.trim() }
+                        def pluginName = values[headers.indexOf('plugin_name')]
+                        def limit = values[headers.indexOf('limit')]
+                        def windowSize = values[headers.indexOf('window_size')]
+
+                        // Find the plugin config in kong.yaml
+                        def pluginEntry = kongYaml.plugins.find { it.name == pluginName }
+
+                        if (pluginEntry) {
+                            // Append data from CSV (like limit, window_size) into plugin entry
+                            pluginEntry.limit = limit
+                            pluginEntry.window_size = windowSize
+
+                            // Find plugin config from config.yaml
+                            def pluginConfig = configYaml.plugin_file_path[pluginName]
+                            if (pluginConfig) {
+                                // Append additional config from config.yaml to plugin in kong.yaml
+                                pluginEntry += pluginConfig
+                            }
+                        } else {
+                            echo "Plugin ${pluginName} not found in kong.yaml"
+                        }
+                    }
+
+                    // Write the updated kong.yaml file
+                    writeYaml file: 'kong.yaml', data: kongYaml
+
+                    // Print final kong.yaml content
+                    def updatedKongYaml = readFile('kong.yaml').trim()
+                    echo "Final Kong Config (kong.yaml):\n${updatedKongYaml}"
+                }
+            }
+        }
     }
 }
+
+
 
 
 
@@ -137,7 +190,9 @@ pipeline {
                     
 //                     echo "File Path from First Header (${headers[0]}): ${filePath}"
 
+//                     // Check if the file exists in the checked-out spec repository
 //                     if (fileExists("spec_repo/${filePath}")) {
+//                         // Convert the spec file to kong.yaml using deck
 //                         sh "deck file openapi2kong -s spec_repo/${filePath} -o kong.yaml"
 //                         def kongConfigContent = readFile('kong.yaml').trim()
 //                         echo "Kong Configuration (kong.yaml):\n${kongConfigContent}"
@@ -167,6 +222,12 @@ pipeline {
 //                         config.global_file_path.each { globalFilePath ->
 //                             globalFilePath = globalFilePath.trim()
 //                             echo "Processing global plugin configuration from: config_repo/${globalFilePath}"
+
+//                             // Remove specific lines from the global plugin configuration file
+//                             sh "sed -i '/_format_version: \"3.0\"/d' config_repo/${globalFilePath}"
+//                             sh "sed -i '/^plugins:/d' config_repo/${globalFilePath}"
+
+//                             // Append the global plugin configuration
 //                             sh "yq eval-all '.plugins += load(\"config_repo/${globalFilePath}\")' -i kong.yaml"
 //                         }
 //                     }
@@ -176,6 +237,12 @@ pipeline {
 //                         config.plugin_file_path.each { pluginFilePath ->
 //                             pluginFilePath = pluginFilePath.trim()
 //                             echo "Processing service-specific plugin configuration from: config_repo/${pluginFilePath}"
+
+//                             // Remove specific lines from the service-specific plugin configuration file
+//                             sh "sed -i '/_format_version: \"3.0\"/d' config_repo/${pluginFilePath}"
+//                             sh "sed -i '/^plugins:/d' config_repo/${pluginFilePath}"
+
+//                             // Append the plugin configuration to the specified service
 //                             sh "yq eval-all '.services[] |= (select(.name == \"swagger-petstore-openapi-3-0\") | .plugins += load(\"config_repo/${pluginFilePath}\") | .)' -i kong.yaml"
 //                         }
 //                     }
@@ -202,160 +269,19 @@ pipeline {
 
 
 
-// pipeline {
-//     agent any
-//     parameters {
-//         string(name: 'Konnect_Token', description: 'Kong Konnect token')
-//     }
-//     environment {
-//         GIT_USER_EMAIL = 'krishna.sharma@neosalpha.com'
-//         GIT_USER_NAME = 'krishna2507'
-//     }
-//     stages {
-//         stage('Read API Spec Details from CSV') {
-//             steps {
-//                 script {
-//                     // Define the path to the CSV file
-//                     def csvFilePath = 'kong.csv'
-                    
-//                     // Read the CSV content
-//                     def csvContent = readFile(csvFilePath).trim()
-                    
-//                     // Print the CSV content
-//                     echo "CSV Content:\n${csvContent}"
-
-//                     // Split CSV into lines (rows)
-//                     def csvLines = csvContent.split("\n")
-
-//                     // Ensure headers are split correctly into an array of strings
-//                     def headers = csvLines[0].split(",").collect { it.trim() }
-
-//                     // Extract the first row of data (after headers)
-//                     def values = csvLines[1].split(",").collect { it.trim() }
-
-//                     // Assuming the first header corresponds to a file path
-//                     def firstHeader = headers[0] // This will give you the name of the first column
-//                     def filePath = values[0] // This will give you the value from the first column of the first row
-
-//                     // Print the file path
-//                     echo "File Path from First Header (${firstHeader}): ${filePath}"
-
-//                     // Check if the repository containing the file exists
-//                     dir('spec_repo') {
-//                         git url: 'https://github.com/krishana2507/petstore-api.git', branch: 'main' // Checkout the repository
-//                     }
-
-//                     // Check if the specified file exists and convert it to kong.yaml
-//                     if (fileExists("spec_repo/${filePath}")) {
-//                         // Convert the spec file to kong.yaml using deck
-//                         sh "deck file openapi2kong -s spec_repo/${filePath} -o kong.yaml"
-                        
-//                         // Print the contents of kong.yaml
-//                         def kongConfigContent = readFile('kong.yaml').trim() // Read the generated kong.yaml
-//                         echo "Kong Configuration (kong.yaml):\n${kongConfigContent}"
-//                     } else {
-//                         echo "File not found at path: spec_repo/${filePath}"
-//                     }
-//                 }
-//             }
-//         }
-//     }
-// }
-
-
-
-
-
-
-
-
-// pipeline {
-//     agent any
-//     parameters {
-//         string(name: 'Konnect_Token', description: 'Kong Konnect token')
-//     }
-//     environment {
-//         GIT_USER_EMAIL = 'krishna.sharma@neosalpha.com'
-//         GIT_USER_NAME = 'krishna2507'
-//     }
-//     stages {
-//         stage('Read API Spec Details from CSV') {
-//             steps {
-//                 script {
-//                     // Define the path to the CSV file
-//                     def csvFilePath = 'kong.csv'
-                    
-//                     // Read the CSV content
-//                     def csvContent = readFile(csvFilePath).trim()
-                    
-//                     // Print the CSV content
-//                     echo "CSV Content:\n${csvContent}"
 
-//                     // Split CSV into lines (rows)
-//                     def csvLines = csvContent.split("\n")
 
-//                     // Ensure headers are split correctly into an array of strings
-//                     def headers = csvLines[0].split(",").collect { it.trim() }
 
-//                     // Extract the first row of data (after headers)
-//                     def values = csvLines[1].split(",").collect { it.trim() }
 
-//                     // Assuming the first header corresponds to a file path
-//                     def firstHeader = headers[0] // This will give you the name of the first column
-//                     def filePath = values[0] // This will give you the value from the first column of the first row
 
-//                     // Print the file path
-//                     echo "File Path from First Header (${firstHeader}): ${filePath}"
 
-//                     // Check if the repository containing the file exists
-//                     dir('spec_repo') {
-//                         git url: 'https://github.com/krishana2507/petstore-api.git', branch: 'main' // Checkout the repository
-//                     }
 
-//                     // Print the content of the specified file
-//                     if (fileExists("spec_repo/${filePath}")) {
-//                         def fileContent = readFile("spec_repo/${filePath}").trim() // Adjust the path if necessary
-//                         echo "Content of ${filePath}:\n${fileContent}"
-//                     } else {
-//                         echo "File not found at path: spec_repo/${filePath}"
-//                     }
-//                 }
-//             }
-//         }
-//     }
-// }
 
 
 
 
 
 
-// pipeline {
-//     agent any
-//     parameters {
-//         string(name: 'Konnect_Token', description: 'Kong Konnect token')
-//     }
-//     environment {
-//         GIT_USER_EMAIL = 'krishna.sharma@neosalpha.com'
-//         GIT_USER_NAME = 'krishna2507'
-//     }
-//     stages {
-//         stage('Read API Spec Details from CSV') {
-//             steps {
-//                 script {
-//                     // Define the path to the CSV file
-//                     def csvFilePath = 'kong.csv'
-                    
-//                     // Read the CSV content
-//                     def csvContent = readFile(csvFilePath).trim()
-                    
-//                     // Print the CSV content
-//                     echo "CSV Content:\n${csvContent}"
-//                 }
-//             }
-//         }
-//     }
-// }
 
 
 
@@ -393,106 +319,6 @@ pipeline {
 
 
 
-
-
-
-
-
-// pipeline {
-//     agent any
-//     parameters {
-//         string(name: 'Konnect_Token', description: 'Kong Konnect token')
-//     }
-//     environment {
-//         GIT_USER_EMAIL = 'krishna.sharma@neosalpha.com'
-//         GIT_USER_NAME = 'krishna2507'
-//     }
-//     stages {
-//         stage('Read API Spec Details from CSV') {
-//             steps {
-//                 script {
-//                     // Define the path to the CSV file
-//                     def csvFilePath = 'kong.csv'
-                    
-//                     // Read the CSV content
-//                     def csvContent = readFile(csvFilePath).trim()
-                    
-//                     // Split CSV into lines (rows)
-//                     def csvLines = csvContent.split("\n")
-                    
-//                     // Ensure headers are split correctly into an array of strings
-//                     def headers = csvLines[0].split(",").collect { it.trim() }
-                    
-//                     // Extract the first row of data (after headers)
-//                     def values = csvLines[1].split(",").collect { it.trim() }
-                    
-//                     // Find indices of specific columns based on headers
-//                     def apiNameIndex = headers.indexOf('API Name')
-//                     def specUrlIndex = headers.indexOf('Spec URL')
-//                     def pluginIndex = headers.indexOf('Plugin')
-//                     def limitIndex = headers.indexOf('limit')
-//                     def windowSizeIndex = headers.indexOf('window size')
-                    
-//                     // Extract the values using the indices
-//                     def apiName = values[apiNameIndex]
-//                     def specUrl = values[specUrlIndex]
-//                     def plugin = values[pluginIndex]
-//                     def limit = values[limitIndex]
-//                     def windowSize = values[windowSizeIndex]
-                    
-//                     echo "API Name: ${apiName}"
-//                     echo "Spec URL: ${specUrl}"
-//                     echo "Plugin: ${plugin}"
-//                     echo "Limit: ${limit}"
-//                     echo "Window Size: ${windowSize}"
-                    
-//                     // Checkout the spec repository
-//                     dir('spec_repo') {
-//                         git url: specUrl, branch: 'main'  // Assuming 'main' branch
-//                     }
-                    
-//                     // OAS file path is assumed inside the cloned repo
-//                     def oasFilePath = "spec_repo/petstore.yaml"
-                    
-//                     // Generate Kong config from OAS
-//                     sh "deck file openapi2kong -s ${oasFilePath} -o kong.yaml"
-                    
-//                     // Apply the plugin settings
-//                     sh """
-//                     yq eval '.plugins += [{
-//                         "name": "${plugin}",
-//                         "config": {
-//                             "limit": ${limit},
-//                             "window_size": ${windowSize}
-//                         }
-//                     }]' -i kong.yaml
-//                     """
-                    
-//                     // Print the final kong.yaml
-//                     def kongConfigContent = readFile('kong.yaml').trim()
-//                     echo "Updated Kong config (kong.yaml) Content:\n${kongConfigContent}"
-//                 }
-//             }
-//         }
-//         stage('Push Kong YAML to Kong Konnect') {
-//             steps {
-//                 script {
-//                     def konnectToken = params.Konnect_Token
-//                     def konnectControlPlaneName = 'konnect-values'
-//                     def deckCmd = "deck sync -s kong.yaml --konnect-token=${konnectToken} --konnect-control-plane-name=${konnectControlPlaneName}"
-                    
-//                     def result = sh(script: deckCmd, returnStatus: true)
-                    
-//                     if (result == 0) {
-//                         echo "Successfully pushed kong.yaml to Kong Konnect"
-//                     } else {
-//                         error "Failed to push kong.yaml to Kong Konnect. Deck command returned non-zero exit code."
-//                     }
-//                 }
-//             }
-//         }
-//     }
-// }
 
 
 
