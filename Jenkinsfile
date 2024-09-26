@@ -55,7 +55,7 @@ pipeline {
                 }
             }
         }
-        
+
         stage('Checkout Project Repository') {
             steps {
                 script {
@@ -90,13 +90,42 @@ pipeline {
                         globalPaths += globalMatcher[0][1].split("\\s*-\\s*").collect { it.trim() }
                     }
 
-                    // Append plugins to kong.yaml
-                    def pluginsToAppend = (pluginPaths + globalPaths).join('\n') // Join plugin paths
-                    sh "echo '${pluginsToAppend}' >> kong.yaml" // Append to kong.yaml
+                    // Append service level plugins to kong.yaml
+                    def kongYamlContent = readFile('kong.yaml').trim()
 
-                    // Print the final kong.yaml content
-                    def finalKongConfig = readFile('kong.yaml').trim()
-                    echo "Updated Kong Configuration (kong.yaml):\n${finalKongConfig}"
+                    // Loop through global paths and append them
+                    globalPaths.each { globalFilePath ->
+                        globalFilePath = globalFilePath.trim()
+                        echo "Processing global plugin configuration from: ${globalFilePath}"
+
+                        // Remove specific lines from the global plugin configuration file
+                        sh "sed -i '/_format_version: \"3.0\"/d' ${globalFilePath}"
+                        sh "sed -i '/^plugins:/d' ${globalFilePath}"
+
+                        // Append the global plugin configuration to kong.yaml
+                        sh "yq eval-all '.plugins += load(\"${globalFilePath}\")' -i kong.yaml"
+                    }
+
+                    // Loop through plugin paths and append them to the specific service
+                    pluginPaths.each { pluginFilePath ->
+                        pluginFilePath = pluginFilePath.trim()
+                        echo "Processing service-specific plugin configuration from: ${pluginFilePath}"
+
+                        // Remove specific lines from the plugin configuration file
+                        sh "sed -i '/_format_version: \"3.0\"/d' ${pluginFilePath}"
+                        sh "sed -i '/^plugins:/d' ${pluginFilePath}"
+
+                        // Append the plugin configuration to the specified service
+                        sh """
+                        yq eval-all '
+                          .services[] |= 
+                          (select(.name == "swagger-petstore-openapi-3-0") | .plugins += load("${pluginFilePath}") | .)' -i kong.yaml
+                        """
+                    }
+
+                    // Print updated kong.yaml content with global and service-specific plugins
+                    def updatedKongConfigContent = readFile('kong.yaml').trim()
+                    echo "Updated Kong config (kong.yaml) with global and service-specific plugins:\n${updatedKongConfigContent}"
                 }
             }
         }
