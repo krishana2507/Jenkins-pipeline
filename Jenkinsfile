@@ -61,24 +61,24 @@ pipeline {
                     // Parse the plugins from config.yaml
                     def config = readYaml(text: configContent)
 
-                      // Append global plugin configurations
-                        if (config.global_file_path) {
-                            config.global_file_path.each { globalFilePath ->
-                                globalFilePath = globalFilePath.trim()
-                                echo "Processing global plugin configuration from: ${globalFilePath}"
+                      // // Append global plugin configurations
+                      //   if (config.global_file_path) {
+                      //       config.global_file_path.each { globalFilePath ->
+                      //           globalFilePath = globalFilePath.trim()
+                      //           echo "Processing global plugin configuration from: ${globalFilePath}"
                                 
-                                // Remove specific lines from the plugin configuration file
-                                sh "sed -i '/_format_version: \"3.0\"/d' ${globalFilePath}"
-                                sh "sed -i '/^plugins:/d' ${globalFilePath}"
+                      //           // Remove specific lines from the plugin configuration file
+                      //           sh "sed -i '/_format_version: \"3.0\"/d' ${globalFilePath}"
+                      //           sh "sed -i '/^plugins:/d' ${globalFilePath}"
                                 
-                                // Append the global plugin configuration
-                                sh "yq eval-all '.plugins += load(\"${globalFilePath}\")' -i kong.yaml"
-                            }
+                      //           // Append the global plugin configuration
+                      //           sh "yq eval-all '.plugins += load(\"${globalFilePath}\")' -i kong.yaml"
+                      //       }
                             
-                            // Print updated kong.yaml content with global plugins
-                            def updatedKongConfigContent = readFile('kong.yaml').trim()
-                            echo "Updated Kong config (kong.yaml) with global plugins:\n${updatedKongConfigContent}"
-                        }
+                      //       // Print updated kong.yaml content with global plugins
+                      //       def updatedKongConfigContent = readFile('kong.yaml').trim()
+                      //       echo "Updated Kong config (kong.yaml) with global plugins:\n${updatedKongConfigContent}"
+                      //   }
 
                     // Append service-specific plugins
                     if (config.plugin_file_path) {
