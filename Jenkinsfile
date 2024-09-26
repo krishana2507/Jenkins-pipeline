@@ -30,7 +30,9 @@ pipeline {
                     
                     echo "File Path from First Header (${headers[0]}): ${filePath}"
 
+                    // Check if the file exists in the checked-out spec repository
                     if (fileExists("spec_repo/${filePath}")) {
+                        // Convert the spec file to kong.yaml using deck
                         sh "deck file openapi2kong -s spec_repo/${filePath} -o kong.yaml"
                         def kongConfigContent = readFile('kong.yaml').trim()
                         echo "Kong Configuration (kong.yaml):\n${kongConfigContent}"
@@ -60,6 +62,12 @@ pipeline {
                         config.global_file_path.each { globalFilePath ->
                             globalFilePath = globalFilePath.trim()
                             echo "Processing global plugin configuration from: config_repo/${globalFilePath}"
+
+                            // Remove specific lines from the global plugin configuration file
+                            sh "sed -i '/_format_version: \"3.0\"/d' config_repo/${globalFilePath}"
+                            sh "sed -i '/^plugins:/d' config_repo/${globalFilePath}"
+
+                            // Append the global plugin configuration
                             sh "yq eval-all '.plugins += load(\"config_repo/${globalFilePath}\")' -i kong.yaml"
                         }
                     }
@@ -69,6 +77,12 @@ pipeline {
                         config.plugin_file_path.each { pluginFilePath ->
                             pluginFilePath = pluginFilePath.trim()
                             echo "Processing service-specific plugin configuration from: config_repo/${pluginFilePath}"
+
+                            // Remove specific lines from the service-specific plugin configuration file
+                            sh "sed -i '/_format_version: \"3.0\"/d' config_repo/${pluginFilePath}"
+                            sh "sed -i '/^plugins:/d' config_repo/${pluginFilePath}"
+
+                            // Append the plugin configuration to the specified service
                             sh "yq eval-all '.services[] |= (select(.name == \"swagger-petstore-openapi-3-0\") | .plugins += load(\"config_repo/${pluginFilePath}\") | .)' -i kong.yaml"
                         }
                     }
@@ -81,6 +95,99 @@ pipeline {
         }
     }
 }
+
+
+
+
+
+
+
+
+
+
+// pipeline {
+//     agent any
+//     parameters {
+//         string(name: 'Konnect_Token', description: 'Kong Konnect token')
+//     }
+//     environment {
+//         GIT_USER_EMAIL = 'krishna.sharma@neosalpha.com'
+//         GIT_USER_NAME = 'krishna2507'
+//     }
+//     stages {
+//         stage('Checkout Spec Repo') {
+//             steps {
+//                 script {
+//                     // Check out the repository containing the API spec
+//                     dir('spec_repo') {
+//                         git url: 'https://github.com/krishana2507/petstore-api.git', branch: 'main'
+//                     }
+//                 }
+//             }
+//         }
+//         stage('Convert API Spec to kong.yaml') {
+//             steps {
+//                 script {
+//                     def csvFilePath = 'kong.csv'
+//                     def csvContent = readFile(csvFilePath).trim()
+//                     def csvLines = csvContent.split("\n")
+//                     def headers = csvLines[0].split(",").collect { it.trim() }
+//                     def values = csvLines[1].split(",").collect { it.trim() }
+//                     def filePath = values[0]
+                    
+//                     echo "File Path from First Header (${headers[0]}): ${filePath}"
+
+//                     if (fileExists("spec_repo/${filePath}")) {
+//                         sh "deck file openapi2kong -s spec_repo/${filePath} -o kong.yaml"
+//                         def kongConfigContent = readFile('kong.yaml').trim()
+//                         echo "Kong Configuration (kong.yaml):\n${kongConfigContent}"
+//                     } else {
+//                         echo "File not found at path: spec_repo/${filePath}"
+//                     }
+//                 }
+//             }
+//         }
+//         stage('Checkout Config Repo') {
+//             steps {
+//                 script {
+//                     // Checkout the config repository
+//                     dir('config_repo') {
+//                         git url: 'https://github.com/krishana2507/my-project.git', branch: 'main'
+//                     }
+
+//                     // Read the config.yaml file
+//                     def configContent = readFile('config_repo/config.yaml').trim()
+//                     echo "Config Content:\n${configContent}"
+
+//                     // Parse the plugins from config.yaml
+//                     def config = readYaml(text: configContent)
+
+//                     // Append global plugins
+//                     if (config.global_file_path) {
+//                         config.global_file_path.each { globalFilePath ->
+//                             globalFilePath = globalFilePath.trim()
+//                             echo "Processing global plugin configuration from: config_repo/${globalFilePath}"
+//                             sh "yq eval-all '.plugins += load(\"config_repo/${globalFilePath}\")' -i kong.yaml"
+//                         }
+//                     }
+
+//                     // Append service-specific plugins
+//                     if (config.plugin_file_path) {
+//                         config.plugin_file_path.each { pluginFilePath ->
+//                             pluginFilePath = pluginFilePath.trim()
+//                             echo "Processing service-specific plugin configuration from: config_repo/${pluginFilePath}"
+//                             sh "yq eval-all '.services[] |= (select(.name == \"swagger-petstore-openapi-3-0\") | .plugins += load(\"config_repo/${pluginFilePath}\") | .)' -i kong.yaml"
+//                         }
+//                     }
+
+//                     // Print updated kong.yaml content with appended plugins
+//                     def updatedKongConfigContent = readFile('kong.yaml').trim()
+//                     echo "Updated Kong config (kong.yaml) with appended plugins:\n${updatedKongConfigContent}"
+//                 }
+//             }
+//         }
+//     }
+// }
 
 
 
