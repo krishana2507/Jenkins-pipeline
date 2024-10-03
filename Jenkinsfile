@@ -109,33 +109,27 @@ pipeline {
                     def configContent = readFile('config_repo/config.yaml').trim()
                     def configYaml = readYaml(text: configContent)
 
-                    // Loop through CSV lines (starting from line 1, skipping the header)
-                    csvLines.drop(1).each { line -> 
-                        def values = line.split(",").collect { it.trim() }
-                        def pluginName = values[headers.indexOf('plugin_name')] // Get the plugin name from CSV
-                        def limit = values[headers.indexOf('limit')]           // Get the limit value from CSV
-                        def windowSize = values[headers.indexOf('window_size')] // Get the window size from CSV
+                    // Loop through CSV lines (without using drop())
+                    for (int i = 1; i < csvLines.size(); i++) {
+                        def values = csvLines[i].split(",").collect { it.trim() }
+                        def pluginName = values[headers.indexOf('plugin_name')]
+                        def limit = values[headers.indexOf('limit')]
+                        def windowSize = values[headers.indexOf('window_size')]
 
-                        // Find the plugin entry in kong.yaml
+                        // Find the plugin config in kong.yaml
                         def pluginEntry = kongYaml.plugins.find { it.name == pluginName }
 
                         if (pluginEntry) {
-                            // Append data from CSV (like limit, window_size) into the plugin entry
+                            // Append data from CSV (like limit, window_size) into plugin entry
                             pluginEntry.limit = limit
                             pluginEntry.window_size = windowSize
 
-                            // Find additional plugin config in config.yaml, if available
-                            def pluginConfigPath = configYaml.plugin_file_path.find { path -> 
-                                path.endsWith("${pluginName}.yaml")
-                            }
+                            // Find plugin config from config.yaml
+                            def pluginConfig = configYaml.plugin_file_path.find { path -> path.endsWith("${pluginName}.yaml") }
 
-                            if (pluginConfigPath) {
-                                // Load additional plugin configuration from the specified file in config.yaml
-                                def pluginConfigContent = readFile("config_repo/${pluginConfigPath}").trim()
-                                def pluginConfig = readYaml(text: pluginConfigContent)
-
-                                // Merge additional config into plugin entry
-                                pluginEntry += pluginConfig
+                            if (pluginConfig) {
+                                // Append additional config from config.yaml to plugin in kong.yaml
+                                pluginEntry += readYaml(file: "config_repo/${pluginConfig}")
                             }
                         } else {
                             echo "Plugin ${pluginName} not found in kong.yaml"
@@ -153,6 +147,7 @@ pipeline {
         }
     }
 }
+
 
 
 
