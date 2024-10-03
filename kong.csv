@@ -1,2 +1,2 @@
 API File Name ,Spec URL,Plugin,limit,window size
-petstore.yaml,https://github.com/krishana2507/petstore-api.git,ratelimiting,5,60
+petstore.yaml,https://github.com/krishana2507/petstore-api.git,ratelimmiting,5,60
