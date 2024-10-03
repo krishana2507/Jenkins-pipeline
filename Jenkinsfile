@@ -137,6 +137,9 @@ pipeline {
                     }
 
                     // Write the updated kong.yaml file
+                    if (fileExists('kong.yaml')) {
+                        sh "rm kong.yaml"  // Delete existing kong.yaml before writing
+                    }
                     writeYaml file: 'kong.yaml', data: kongYaml
 
                     // Print final kong.yaml content
