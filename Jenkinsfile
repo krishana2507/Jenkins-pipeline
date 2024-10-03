@@ -113,16 +113,16 @@ pipeline {
                     for (int i = 1; i < csvLines.size(); i++) {
                         def values = csvLines[i].split(",").collect { it.trim() }
                         def pluginName = values[headers.indexOf('plugin_name')]
-                        def limit = values[headers.indexOf('limit')]
-                        def windowSize = values[headers.indexOf('window_size')]
+                        def minute = values[headers.indexOf('minute')]
+                        def second = values[headers.indexOf('second')]
 
                         // Find the plugin config in kong.yaml
                         def pluginEntry = kongYaml.plugins.find { it.name == pluginName }
 
                         if (pluginEntry) {
-                            // Append data from CSV (like limit, window_size) into plugin entry
-                            pluginEntry.limit = limit
-                            pluginEntry.window_size = windowSize
+                            // Append data from CSV (like minute, second) into plugin entry
+                            pluginEntry.minute = minute
+                            pluginEntry.second = second
 
                             // Find plugin config from config.yaml
                             def pluginConfig = configYaml.plugin_file_path.find { path -> path.endsWith("${pluginName}.yaml") }
@@ -137,6 +137,9 @@ pipeline {
                     }
 
                     // Write the updated kong.yaml file
+                    if (fileExists('kong.yaml')) {
+                        sh "rm kong.yaml"  // Delete existing kong.yaml before writing
+                    }
                     writeYaml file: 'kong.yaml', data: kongYaml
 
                     // Print final kong.yaml content
@@ -147,6 +150,7 @@ pipeline {
         }
     }
 }
+
 
 
 
