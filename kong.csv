@@ -1,2 +1,2 @@
 API File Name ,Spec URL,Plugin,minute,second
-petstore.yaml,https://github.com/krishana2507/petstore-api.git,ratelimmiting,5,60
+petstore.yaml,https://github.com/krishana2507/petstore-api.git,rate-limiting,5,60
