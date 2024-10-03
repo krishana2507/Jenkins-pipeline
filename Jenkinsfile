@@ -1,135 +1,67 @@
 pipeline {
     agent any
-    parameters {
-        string(name: 'Konnect_Token', description: 'Kong Konnect token')
-    }
     environment {
-        GIT_USER_EMAIL = 'krishna.sharma@neosalpha.com'
-        GIT_USER_NAME = 'krishna2507'
+        GIT_URL = 'https://github.com/krishana2507/my-project.git'
     }
     stages {
-        stage('Checkout Spec Repo') {
+        stage('Checkout Source Code') {
             steps {
-                script {
-                    // Check out the repository containing the API spec
-                    dir('spec_repo') {
-                        git url: 'https://github.com/krishana2507/petstore-api.git', branch: 'main'
-                    }
-                }
+                git branch: 'main', url: "${GIT_URL}"
             }
         }
-        stage('Convert API Spec to kong.yaml') {
+
+        stage('Read and Parse CSV') {
             steps {
                 script {
-                    def csvFilePath = 'kong.csv'
-                    def csvContent = readFile(csvFilePath).trim()
-                    def csvLines = csvContent.split("\n")
-                    def headers = csvLines[0].split(",").collect { it.trim() }
-                    def values = csvLines[1].split(",").collect { it.trim() }
-                    def filePath = values[0]
-
-                    echo "File Path from First Header (${headers[0]}): ${filePath}"
-
-                    // Check if the file exists in the checked-out spec repository
-                    if (fileExists("spec_repo/${filePath}")) {
-                        // Convert the spec file to kong.yaml using deck
-                        sh "deck file openapi2kong -s spec_repo/${filePath} -o kong.yaml"
-                        def kongConfigContent = readFile('kong.yaml').trim()
-                        echo "Kong Configuration (kong.yaml):\n${kongConfigContent}"
-                    } else {
-                        echo "File not found at path: spec_repo/${filePath}"
-                    }
-                }
-            }
-        }
-        stage('Checkout Config Repo') {
-            steps {
-                script {
-                    // Checkout the config repository
-                    dir('config_repo') {
-                        git url: 'https://github.com/krishana2507/my-project.git', branch: 'main'
-                    }
-
-                    // Read the config.yaml file
-                    def configContent = readFile('config_repo/config.yaml').trim()
-                    echo "Config Content:\n${configContent}"
-
-                    // Parse the plugins from config.yaml
-                    def config = readYaml(text: configContent)
-
-                    // Append global plugins
-                    if (config.global_file_path) {
-                        config.global_file_path.each { globalFilePath ->
-                            globalFilePath = globalFilePath.trim()
-                            echo "Processing global plugin configuration from: config_repo/${globalFilePath}"
-
-                            // Remove specific lines from the global plugin configuration file
-                            sh "sed -i '/_format_version: \"3.0\"/d' config_repo/${globalFilePath}"
-                            sh "sed -i '/^plugins:/d' config_repo/${globalFilePath}"
-
-                            // Append the global plugin configuration
-                            sh "yq eval-all '.plugins += load(\"config_repo/${globalFilePath}\")' -i kong.yaml"
-                        }
-                    }
-
-                    // Append service-specific plugins
-                    if (config.plugin_file_path) {
-                        config.plugin_file_path.each { pluginFilePath ->
-                            pluginFilePath = pluginFilePath.trim()
-                            echo "Processing service-specific plugin configuration from: config_repo/${pluginFilePath}"
-
-                            // Remove specific lines from the service-specific plugin configuration file
-                            sh "sed -i '/_format_version: \"3.0\"/d' config_repo/${pluginFilePath}"
-                            sh "sed -i '/^plugins:/d' config_repo/${pluginFilePath}"
-
-                            // Append the plugin configuration to the specified service
-                            sh "yq eval-all '.services[] |= (select(.name == \"swagger-petstore-openapi-3-0\") | .plugins += load(\"config_repo/${pluginFilePath}\") | .)' -i kong.yaml"
-                        }
-                    }
-
-                    // Print updated kong.yaml content with appended plugins
-                    def updatedKongConfigContent = readFile('kong.yaml').trim()
-                    echo "Updated Kong config (kong.yaml) with appended plugins:\n${updatedKongConfigContent}"
-                }
-            }
-        }
-        stage('Append Plugin Data from CSV') {
-            steps {
-                script {
-                    // Read CSV file
+                    // Read CSV file content
                     def csvContent = readFile('kong.csv').trim()
                     def csvLines = csvContent.split("\n")
                     def headers = csvLines[0].split(",").collect { it.trim() }
-                    
-                    // Read kong.yaml
-                    def kongYamlContent = readFile('kong.yaml').trim()
-                    def kongYaml = readYaml(text: kongYamlContent)
-                    
-                    // Read config.yaml
-                    def configContent = readFile('config_repo/config.yaml').trim()
-                    def configYaml = readYaml(text: configContent)
 
-                    // Loop through CSV lines (without using drop())
+                    // Initialize a map to hold plugin data from CSV
+                    def pluginData = [:]
+
+                    // Loop through CSV and extract plugin configuration
                     for (int i = 1; i < csvLines.size(); i++) {
                         def values = csvLines[i].split(",").collect { it.trim() }
-                        def pluginName = values[headers.indexOf('plugin_name')]
+                        def apiFileName = values[headers.indexOf('API File Name')]
+                        def pluginName = values[headers.indexOf('Plugin')]
                         def minute = values[headers.indexOf('minute')]
                         def second = values[headers.indexOf('second')]
 
-                        // Find the plugin config in kong.yaml
+                        pluginData[pluginName] = [minute: minute, second: second]
+                    }
+
+                    // Store plugin data to be used in later stages
+                    env.PLUGIN_DATA = pluginData.toString()
+                }
+            }
+        }
+
+        stage('Process and Update Kong YAML') {
+            steps {
+                script {
+                    // Convert the stored string back to map
+                    def pluginData = evaluate(env.PLUGIN_DATA)
+
+                    // Read kong.yaml
+                    def kongYamlContent = readFile('kong.yaml').trim()
+                    def kongYaml = readYaml(text: kongYamlContent)
+
+                    // Iterate over each plugin from CSV and update kong.yaml
+                    pluginData.each { pluginName, config ->
                         def pluginEntry = kongYaml.plugins.find { it.name == pluginName }
-
+                        
                         if (pluginEntry) {
-                            // Append data from CSV (like minute, second) into plugin entry
-                            pluginEntry.minute = minute
-                            pluginEntry.second = second
+                            echo "Found plugin ${pluginName} in kong.yaml"
 
-                            // Find plugin config from config.yaml
-                            def pluginConfig = configYaml.plugin_file_path.find { path -> path.endsWith("${pluginName}.yaml") }
-
-                            if (pluginConfig) {
-                                // Append additional config from config.yaml to plugin in kong.yaml
-                                pluginEntry += readYaml(file: "config_repo/${pluginConfig}")
+                            // Update minute and second values in the plugin's config
+                            if (pluginEntry.config) {
+                                pluginEntry.config.minute = config.minute.toInteger()
+                                pluginEntry.config.second = config.second.toInteger()
+                                echo "Updated config for ${pluginName}:\n${pluginEntry.config}"
+                            } else {
+                                echo "No config section found for ${pluginName}, skipping"
                             }
                         } else {
                             echo "Plugin ${pluginName} not found in kong.yaml"
@@ -137,9 +69,6 @@ pipeline {
                     }
 
                     // Write the updated kong.yaml file
-                    if (fileExists('kong.yaml')) {
-                        sh "rm kong.yaml"  // Delete existing kong.yaml before writing
-                    }
                     writeYaml file: 'kong.yaml', data: kongYaml
 
                     // Print final kong.yaml content
